@@ -6,16 +6,53 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test": "jest --passWithNoTests"
+  },
+  "jest": {
+    "preset": "jest-expo",
+    "testEnvironment": "node",
+    "transformIgnorePatterns": [
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)"
+    ],
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1",
+      "^expo$": "<rootDir>/src/__tests__/__mocks__/expo.js",
+      "^expo/(.*)$": "<rootDir>/src/__tests__/__mocks__/expo.js"
+    },
+    "testPathIgnorePatterns": ["/node_modules/", "/__mocks__/"],
+    "setupFiles": ["./jest.setup.js"]
   },
   "dependencies": {
+    "@react-native-community/netinfo": "11.5.2",
+    "@react-navigation/bottom-tabs": "^7.15.7",
+    "@react-navigation/native": "^7.2.0",
+    "@react-navigation/native-stack": "^7.14.7",
+    "@tanstack/react-query": "^5.95.2",
+    "axios": "^1.13.6",
     "expo": "~55.0.8",
+    "expo-camera": "~55.0.11",
+    "expo-location": "~55.1.4",
+    "expo-secure-store": "~55.0.9",
     "expo-status-bar": "~55.0.4",
     "react": "19.2.0",
-    "react-native": "0.83.2"
+    "react-hook-form": "^7.72.0",
+    "react-native": "0.83.2",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-native-screens": "~4.23.0",
+    "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",
+    "babel-plugin-module-resolver": "^5.0.3",
+    "babel-preset-expo": "^55.0.12",
+    "fast-check": "^4.6.0",
+    "jest": "^30.3.0",
+    "jest-expo": "^55.0.11",
+    "ts-jest": "^29.4.6",
     "typescript": "~5.9.2"
   },
   "private": true

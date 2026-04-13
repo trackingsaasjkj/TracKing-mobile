@@ -55,7 +55,7 @@ describe('cadena de transiciones completa', () => {
     let current: ServiceStatus = 'ASSIGNED';
 
     while (canTransition(current)) {
-      const next = nextStatus(current)!;
+      const next: ServiceStatus = nextStatus(current)!;
       chain.push(next);
       current = next;
     }

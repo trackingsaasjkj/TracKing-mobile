@@ -9,7 +9,7 @@ import { lightNavigationTheme, darkNavigationTheme } from '@/shared/ui/navigatio
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, staleTime: 30_000 },
+    queries: { retry: 1, staleTime: 60_000, gcTime: 600_000 },
   },
 });
 

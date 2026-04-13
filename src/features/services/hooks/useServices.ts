@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { servicesApi } from '../api/servicesApi';
 import { useServicesStore } from '../store/servicesStore';
 import type { Service, ServiceStatus } from '../types/services.types';
@@ -18,45 +19,28 @@ export function nextStatus(current: ServiceStatus): ServiceStatus | null {
 }
 
 /**
- * Full hook: fetches services from backend and exposes performAction.
+ * Full hook: fetches services from backend via React Query and exposes performAction.
  * Use ONLY in ServicesScreen (list). ServiceDetailScreen uses useServiceDetail.
- * BUG-04/11 FIX: prevents double-fetch from mounting in multiple screens.
+ * Requirements: 5.4, 5.5
  */
 export function useServices() {
-  const { services, setServices, updateService } = useServicesStore();
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { setServices, updateService } = useServicesStore();
+  const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const isFirstLoad = useRef(true);
 
-  const fetchData = useCallback(
-    async (isRefresh: boolean) => {
-      if (isRefresh) {
-        setRefreshing(true);
-      } else {
-        setLoading(true);
-      }
-      setError(null);
-      try {
-        const data = await servicesApi.getAll();
-        setServices(data);
-      } catch (err: any) {
-        setError(err?.userMessage ?? 'Error al cargar servicios');
-      } finally {
-        setLoading(false);
-        setRefreshing(false);
-        isFirstLoad.current = false;
-      }
+  const query = useQuery({
+    queryKey: ['courier-services'],
+    queryFn: async () => {
+      const data = await servicesApi.getAll();
+      setServices(data);
+      return data;
     },
-    [setServices],
-  );
+    placeholderData: keepPreviousData,
+  });
 
-  useEffect(() => {
-    fetchData(false);
-  }, [fetchData]);
-
-  const refresh = useCallback(() => fetchData(true), [fetchData]);
+  const refresh = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['courier-services'] });
+  }, [queryClient]);
 
   const performAction = useCallback(
     async (service: Service): Promise<{ ok: boolean; error?: string }> => {
@@ -67,6 +51,7 @@ export function useServices() {
       try {
         const updated = await servicesApi.updateStatus(service.id, next);
         updateService(updated);
+        await queryClient.invalidateQueries({ queryKey: ['courier-services'] });
         return { ok: true };
       } catch (err: any) {
         return { ok: false, error: err?.userMessage ?? 'Error al actualizar servicio' };
@@ -74,10 +59,18 @@ export function useServices() {
         setActionLoading(null);
       }
     },
-    [updateService],
+    [updateService, queryClient],
   );
 
-  return { services, loading, refreshing, error, actionLoading, refresh, performAction };
+  return {
+    services: query.data ?? [],
+    loading: query.isLoading,
+    refreshing: query.isFetching && !query.isLoading,
+    error: query.isError ? (query.error as any)?.userMessage ?? 'Error al cargar servicios' : null,
+    actionLoading,
+    refresh,
+    performAction,
+  };
 }
 
 /**

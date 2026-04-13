@@ -1,12 +1,18 @@
 import { Platform } from 'react-native';
 
-/** Cross-platform shadow presets */
+const DEFAULT_SHADOW_COLOR = '#000';
+const DEFAULT_PRIMARY_COLOR = '#2563EB';
+
+/** Cross-platform shadow presets.
+ *  On iOS, pass `shadowColor` inline to override the default neutral shadow color:
+ *    <View style={[shadows.sm, { shadowColor: colors.black }]} />
+ */
 export const shadows = {
   none: {},
 
   sm: Platform.select({
     ios: {
-      shadowColor: '#000',
+      shadowColor: DEFAULT_SHADOW_COLOR,
       shadowOpacity: 0.06,
       shadowRadius: 4,
       shadowOffset: { width: 0, height: 2 },
@@ -16,7 +22,7 @@ export const shadows = {
 
   md: Platform.select({
     ios: {
-      shadowColor: '#000',
+      shadowColor: DEFAULT_SHADOW_COLOR,
       shadowOpacity: 0.1,
       shadowRadius: 8,
       shadowOffset: { width: 0, height: 4 },
@@ -26,7 +32,7 @@ export const shadows = {
 
   lg: Platform.select({
     ios: {
-      shadowColor: '#000',
+      shadowColor: DEFAULT_SHADOW_COLOR,
       shadowOpacity: 0.14,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 6 },
@@ -34,10 +40,10 @@ export const shadows = {
     android: { elevation: 8 },
   }),
 
-  /** Colored shadow for primary cards */
+  /** Colored shadow for primary cards — override shadowColor inline with colors.primary */
   primary: Platform.select({
     ios: {
-      shadowColor: '#2563EB',
+      shadowColor: DEFAULT_PRIMARY_COLOR,
       shadowOpacity: 0.35,
       shadowRadius: 12,
       shadowOffset: { width: 0, height: 6 },

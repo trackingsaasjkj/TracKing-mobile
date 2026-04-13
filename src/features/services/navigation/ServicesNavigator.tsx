@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { colors } from '@/shared/ui/colors';
+import { useTheme } from '@/shared/ui/useTheme';
 import { ServicesScreen } from '../screens/ServicesScreen';
 import { ServiceDetailScreen } from '../screens/ServiceDetailScreen';
 
@@ -12,20 +12,19 @@ export type ServicesStackParamList = {
 const Stack = createNativeStackNavigator<ServicesStackParamList>();
 
 export function ServicesNavigator() {
+  const { colors } = useTheme();
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: '#fff' },
+        headerStyle: { backgroundColor: colors.surface },
         headerTintColor: colors.primary,
-        headerTitleStyle: { fontWeight: '600' },
+        headerTitleStyle: { fontWeight: '600', color: colors.neutral900 },
         headerBackTitle: 'Volver',
+        contentStyle: { backgroundColor: colors.background },
       }}
     >
-      <Stack.Screen
-        name="ServicesList"
-        component={ServicesScreen}
-        options={{ headerShown: false }}
-      />
+      <Stack.Screen name="ServicesList" component={ServicesScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="ServiceDetail"
         component={ServiceDetailScreen}

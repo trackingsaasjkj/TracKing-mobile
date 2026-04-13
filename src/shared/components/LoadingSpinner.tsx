@@ -1,19 +1,12 @@
 import React from 'react';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { colors } from '../ui/colors';
+import { ActivityIndicator, View } from 'react-native';
+import { useTheme } from '../ui/useTheme';
 
 export function LoadingSpinner() {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background }}>
       <ActivityIndicator size="large" color={colors.primary} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

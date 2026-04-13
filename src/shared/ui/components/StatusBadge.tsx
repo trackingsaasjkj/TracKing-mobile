@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors } from '../colors';
+import { useTheme } from '../useTheme';
 import { fontSize, fontWeight } from '../typography';
 import { borderRadius, spacing } from '../spacing';
 
@@ -12,17 +12,20 @@ interface StatusBadgeProps {
   dot?: boolean;
 }
 
-const variantMap: Record<BadgeVariant, { bg: string; text: string }> = {
-  success: { bg: colors.successBg, text: colors.successText },
-  warning: { bg: colors.warningBg, text: colors.warningText },
-  danger: { bg: colors.dangerBg, text: colors.dangerText },
-  info: { bg: colors.infoBg, text: colors.infoText },
-  primary: { bg: colors.primaryBg, text: colors.primaryDark },
-  neutral: { bg: colors.neutral100, text: colors.neutral500 },
-};
-
 export function StatusBadge({ label, variant, dot = false }: StatusBadgeProps) {
+  const { colors } = useTheme();
+
+  const variantMap: Record<BadgeVariant, { bg: string; text: string }> = {
+    success: { bg: colors.successBg, text: colors.successText },
+    warning: { bg: colors.warningBg, text: colors.warningText },
+    danger: { bg: colors.dangerBg, text: colors.dangerText },
+    info: { bg: colors.infoBg, text: colors.infoText },
+    primary: { bg: colors.primaryBg, text: colors.primaryDark },
+    neutral: { bg: colors.neutral100, text: colors.neutral500 },
+  };
+
   const { bg, text } = variantMap[variant];
+
   return (
     <View style={[styles.badge, { backgroundColor: bg }]}>
       {dot && <View style={[styles.dot, { backgroundColor: text }]} />}
@@ -41,13 +44,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     gap: spacing.xs,
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  text: {
-    fontSize: fontSize.xs,
-    fontWeight: fontWeight.semibold,
-  },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  text: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
 });

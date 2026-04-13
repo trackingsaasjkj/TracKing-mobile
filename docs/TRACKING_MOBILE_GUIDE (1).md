@@ -304,7 +304,7 @@ async function iniciarTrackingBackground() {
       notificationBody: 'Tu ubicación está siendo compartida',
     },
   });
-}
+}r
 
 // Detener tracking en background
 async function detenerTrackingBackground() {

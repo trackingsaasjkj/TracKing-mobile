@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback, useState } from 'react';
 import * as ExpoLocation from 'expo-location';
 import { locationApi } from '../api/locationApi';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
+import { colors } from '@/shared/ui/colors';
 
 const INTERVAL_MS = 15_000;
 
@@ -136,7 +137,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
           // Android 8+: required persistent notification for background location
           notificationTitle: 'Tracking activo',
           notificationBody: 'Tu ubicación está siendo compartida durante el servicio.',
-          notificationColor: '#2563EB',
+          notificationColor: colors.primary,
         },
       });
     } catch {

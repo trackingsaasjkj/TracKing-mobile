@@ -1,20 +1,25 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../ui/colors';
-import { fontSize } from '../ui/typography';
+import { useTheme } from '../ui/useTheme';
+import { fontSize, fontWeight } from '../ui/typography';
+import { spacing, borderRadius } from '../ui/spacing';
 
 interface ErrorStateProps {
   message?: string;
   onRetry?: () => void;
 }
 
-export function ErrorState({ message = 'Something went wrong.', onRetry }: ErrorStateProps) {
+export function ErrorState({ message = 'Algo salió mal.', onRetry }: ErrorStateProps) {
+  const { colors } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text style={styles.message}>{message}</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.message, { color: colors.neutral800 }]}>{message}</Text>
       {onRetry && (
-        <TouchableOpacity style={styles.button} onPress={onRetry}>
-          <Text style={styles.buttonText}>Retry</Text>
+        <TouchableOpacity
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={onRetry}
+        >
+          <Text style={[styles.buttonText, { color: colors.white }]}>Reintentar</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -26,23 +31,20 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: spacing.xxl,
   },
   message: {
     fontSize: fontSize.md,
-    color: colors.neutral800,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: spacing.lg,
   },
   button: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    borderRadius: borderRadius.md,
   },
   buttonText: {
-    color: '#fff',
     fontSize: fontSize.md,
-    fontWeight: '600',
+    fontWeight: fontWeight.semibold,
   },
 });

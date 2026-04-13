@@ -7,7 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { colors } from '../colors';
+import { useTheme } from '../useTheme';
 import { fontSize, fontWeight } from '../typography';
 import { borderRadius, spacing } from '../spacing';
 
@@ -28,27 +28,32 @@ export function Input({
   style,
   ...rest
 }: InputProps) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.wrapper}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={[styles.inputRow, error ? styles.inputError : styles.inputNormal]}>
+      {label ? (
+        <Text style={[styles.label, { color: colors.neutral800 }]}>{label}</Text>
+      ) : null}
+      <View
+        style={[
+          styles.inputRow,
+          { backgroundColor: colors.surface, borderColor: error ? colors.danger : colors.neutral200 },
+        ]}
+      >
         {leftIcon ? <View style={styles.iconLeft}>{leftIcon}</View> : null}
         <TextInput
-          style={[styles.input, leftIcon ? styles.inputWithLeft : null, style]}
+          style={[styles.input, { color: colors.neutral800 }, leftIcon ? styles.inputWithLeft : null, style]}
           placeholderTextColor={colors.neutral400}
           {...rest}
         />
         {rightIcon ? (
-          <TouchableOpacity
-            style={styles.iconRight}
-            onPress={onRightIconPress}
-            activeOpacity={0.7}
-          >
+          <TouchableOpacity style={styles.iconRight} onPress={onRightIconPress} activeOpacity={0.7}>
             {rightIcon}
           </TouchableOpacity>
         ) : null}
       </View>
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text> : null}
     </View>
   );
 }
@@ -58,31 +63,25 @@ const styles = StyleSheet.create({
   label: {
     fontSize: fontSize.sm,
     fontWeight: fontWeight.medium,
-    color: colors.neutral800,
     marginBottom: spacing.sm,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
     borderRadius: borderRadius.md,
     borderWidth: 1.5,
   },
-  inputNormal: { borderColor: colors.neutral200 },
-  inputError: { borderColor: colors.danger },
   input: {
     flex: 1,
     paddingVertical: 13,
     paddingHorizontal: spacing.lg,
     fontSize: fontSize.md,
-    color: colors.neutral800,
   },
   inputWithLeft: { paddingLeft: spacing.sm },
   iconLeft: { paddingLeft: spacing.lg },
   iconRight: { paddingRight: spacing.lg },
   errorText: {
     fontSize: fontSize.xs,
-    color: colors.danger,
     marginTop: spacing.xs,
   },
 });

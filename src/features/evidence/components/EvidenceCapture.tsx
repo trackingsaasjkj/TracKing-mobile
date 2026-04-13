@@ -1,13 +1,9 @@
 import React, { useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ActivityIndicator,
-  Image,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Image } from 'react-native';
 import { CameraView } from 'expo-camera';
+import { useTheme } from '@/shared/ui/useTheme';
+import { fontSize, fontWeight } from '@/shared/ui/typography';
+import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { useUploadEvidence } from '../hooks/useUploadEvidence';
 
 interface EvidenceCaptureProps {
@@ -17,27 +13,14 @@ interface EvidenceCaptureProps {
 
 export function EvidenceCapture({ serviceId, onUploaded }: EvidenceCaptureProps) {
   const cameraRef = useRef<CameraView>(null);
-  const {
-    imageUri,
-    uploading,
-    uploaded,
-    error,
-    permissionGranted,
-    requestPermission,
-    setImageUri,
-    upload,
-  } = useUploadEvidence();
-
-  const handleRequestPermission = async () => {
-    await requestPermission();
-  };
+  const { colors } = useTheme();
+  const { imageUri, uploading, uploaded, error, permissionGranted, requestPermission, setImageUri, upload } =
+    useUploadEvidence();
 
   const handleTakePhoto = async () => {
     if (!cameraRef.current) return;
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
-    if (photo?.uri) {
-      setImageUri(photo.uri);
-    }
+    if (photo?.uri) setImageUri(photo.uri);
   };
 
   const handleUpload = async () => {
@@ -47,131 +30,72 @@ export function EvidenceCapture({ serviceId, onUploaded }: EvidenceCaptureProps)
 
   if (uploaded) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.successText}>✓ Evidencia subida correctamente</Text>
+      <View style={[styles.container, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.successText, { color: colors.successText }]}>✓ Evidencia subida correctamente</Text>
       </View>
     );
   }
 
   if (permissionGranted === null || permissionGranted === false) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.label}>Se requiere evidencia fotográfica</Text>
+      <View style={[styles.container, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.label, { color: colors.neutral500 }]}>Se requiere evidencia fotográfica</Text>
         {permissionGranted === false && (
-          <Text style={styles.errorText}>Permiso de cámara denegado</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>Permiso de cámara denegado</Text>
         )}
-        <TouchableOpacity style={styles.btn} onPress={handleRequestPermission}>
-          <Text style={styles.btnText}>Permitir cámara</Text>
+        <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]} onPress={requestPermission}>
+          <Text style={[styles.btnText, { color: colors.white }]}>Permitir cámara</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Evidencia de entrega</Text>
+    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+      <Text style={[styles.label, { color: colors.neutral500 }]}>Evidencia de entrega</Text>
 
       {imageUri ? (
         <View>
           <Image source={{ uri: imageUri }} style={styles.preview} />
           <View style={styles.row}>
             <TouchableOpacity
-              style={[styles.btn, styles.btnSecondary]}
+              style={[styles.btn, { backgroundColor: colors.neutral100 }]}
               onPress={() => setImageUri('')}
             >
-              <Text style={[styles.btnText, styles.btnTextSecondary]}>Retomar</Text>
+              <Text style={[styles.btnText, { color: colors.neutral800 }]}>Retomar</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.btn, uploading && styles.btnDisabled]}
+              style={[styles.btn, { backgroundColor: colors.primary }, uploading && styles.btnDisabled]}
               onPress={handleUpload}
               disabled={uploading}
             >
-              {uploading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.btnText}>Subir foto</Text>
-              )}
+              {uploading ? <ActivityIndicator color={colors.white} /> : <Text style={[styles.btnText, { color: colors.white }]}>Subir foto</Text>}
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <View>
           <CameraView ref={cameraRef} style={styles.camera} facing="back" />
-          <TouchableOpacity style={styles.btn} onPress={handleTakePhoto}>
-            <Text style={styles.btnText}>Tomar foto</Text>
+          <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]} onPress={handleTakePhoto}>
+            <Text style={[styles.btnText, { color: colors.white }]}>Tomar foto</Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {error ? <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 10,
-  },
-  camera: {
-    width: '100%',
-    height: 220,
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 10,
-  },
-  preview: {
-    width: '100%',
-    height: 220,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  row: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  btn: {
-    flex: 1,
-    backgroundColor: '#2563EB',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  btnSecondary: {
-    backgroundColor: '#F3F4F6',
-  },
-  btnDisabled: {
-    opacity: 0.6,
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  btnTextSecondary: {
-    color: '#374151',
-  },
-  successText: {
-    color: '#16A34A',
-    fontWeight: '600',
-    textAlign: 'center',
-    paddingVertical: 8,
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 12,
-    marginTop: 6,
-    textAlign: 'center',
-  },
+  container: { borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.md },
+  label: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: spacing.md },
+  camera: { width: '100%', height: 220, borderRadius: borderRadius.sm, overflow: 'hidden', marginBottom: spacing.md },
+  preview: { width: '100%', height: 220, borderRadius: borderRadius.sm, marginBottom: spacing.md },
+  row: { flexDirection: 'row', gap: spacing.sm },
+  btn: { flex: 1, borderRadius: borderRadius.md, paddingVertical: 12, alignItems: 'center', marginTop: spacing.xs },
+  btnDisabled: { opacity: 0.6 },
+  btnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
+  successText: { fontWeight: fontWeight.semibold, textAlign: 'center', paddingVertical: spacing.sm },
+  errorText: { fontSize: fontSize.xs, marginTop: spacing.sm, textAlign: 'center' },
 });

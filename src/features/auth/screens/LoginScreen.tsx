@@ -1,18 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
+  View, Text, TouchableOpacity, ActivityIndicator,
+  StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { useLogin } from '../hooks/useLogin';
-import { colors } from '@/shared/ui/colors';
+import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
@@ -23,66 +17,42 @@ interface FormValues {
   password: string;
 }
 
-// ── Simple SVG-free icon placeholders using Text ──────────────────────────────
-function IconUser() {
-  return <Text style={styles.iconText}>👤</Text>;
-}
+function IconUser() { return <Text style={styles.iconText}>👤</Text>; }
 function IconEye({ hidden }: { hidden: boolean }) {
   return <Text style={styles.iconText}>{hidden ? '🙈' : '👁️'}</Text>;
-}
-function IconFingerprint() {
-  return <Text style={styles.iconText}>🔐</Text>;
 }
 
 export function LoginScreen() {
   const { login, isLoading, error, cooldownSeconds } = useLogin();
+  const { colors } = useTheme();
   const [showPassword, setShowPassword] = useState(false);
 
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<FormValues>({ defaultValues: { email: '', password: '' } });
+  const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
+    defaultValues: { email: '', password: '' },
+  });
 
   const isDisabled = isLoading || cooldownSeconds > 0;
 
-  const onSubmit = (data: FormValues) => {
-    login(data.email, data.password);
-  };
-
   return (
-    <SafeAreaView style={styles.safe}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          {/* ── Hero ── */}
+    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
+      <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
-            <View style={styles.heroIllustration}>
-              <Text style={styles.heroIcon}>🛵</Text>
+            <View style={[styles.heroIllustration, { backgroundColor: colors.primaryBg, shadowColor: colors.black }, shadows.md]}>
+              <Text style={styles.heroIcon}>🏍️</Text>
             </View>
           </View>
 
-          {/* ── Welcome copy ── */}
-          <Text style={styles.title}>Bienvenido, Mensajero</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.neutral900 }]}>Bienvenido, Mensajero</Text>
+          <Text style={[styles.subtitle, { color: colors.neutral500 }]}>
             Ingresa tus credenciales para comenzar tu ruta de hoy.
           </Text>
 
-          {/* ── Form ── */}
           <View style={styles.form}>
             <Controller
               control={control}
               name="email"
-              rules={{
-                required: 'El usuario es requerido',
-                pattern: { value: /\S+@\S+\.\S+/, message: 'Ingresa un email válido' },
-              }}
+              rules={{ required: 'El usuario es requerido', pattern: { value: /\S+@\S+\.\S+/, message: 'Ingresa un email válido' } }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Usuario"
@@ -103,10 +73,7 @@ export function LoginScreen() {
             <Controller
               control={control}
               name="password"
-              rules={{
-                required: 'La contraseña es requerida',
-                minLength: { value: 6, message: 'Mínimo 6 caracteres' },
-              }}
+              rules={{ required: 'La contraseña es requerida', minLength: { value: 6, message: 'Mínimo 6 caracteres' } }}
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
                   label="Contraseña"
@@ -123,43 +90,31 @@ export function LoginScreen() {
               )}
             />
 
-            {/* Forgot password */}
             <TouchableOpacity style={styles.forgotRow} activeOpacity={0.7}>
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+              <Text style={[styles.forgotText, { color: colors.primary }]}>¿Olvidaste tu contraseña?</Text>
             </TouchableOpacity>
 
-            {/* API error */}
-            {error ? <Text style={styles.apiError}>{error}</Text> : null}
+            {error ? <Text style={[styles.apiError, { color: colors.danger }]}>{error}</Text> : null}
 
-            {/* Submit */}
             <TouchableOpacity
-              style={[styles.button, isDisabled && styles.buttonDisabled]}
-              onPress={handleSubmit(onSubmit)}
+              style={[styles.button, { backgroundColor: colors.primary }, isDisabled && { backgroundColor: colors.neutral200 }]}
+              onPress={handleSubmit((data) => login(data.email, data.password))}
               disabled={isDisabled}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel="Iniciar sesión"
             >
               {isLoading ? (
                 <ActivityIndicator color={colors.white} />
               ) : cooldownSeconds > 0 ? (
-                <Text style={styles.buttonText}>Espera {cooldownSeconds}s</Text>
+                <Text style={[styles.buttonText, { color: colors.white }]}>Espera {cooldownSeconds}s</Text>
               ) : (
-                <Text style={styles.buttonText}>Iniciar Sesión →</Text>
+                <Text style={[styles.buttonText, { color: colors.white }]}>Iniciar Sesión</Text>
               )}
             </TouchableOpacity>
 
-            {/* Biometric */}
-            <View style={styles.biometricRow}>
-              <TouchableOpacity style={styles.biometricBtn} activeOpacity={0.8}>
-                <IconFingerprint />
-              </TouchableOpacity>
-              <Text style={styles.biometricLabel}>Usar huella</Text>
-            </View>
           </View>
 
-          {/* ── Footer ── */}
-          <Text style={styles.footer}>v1.0.4 • Soporte Técnico</Text>
+          <Text style={[styles.footer, { color: colors.neutral400 }]}>v1.0.4 • Soporte Técnico</Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -167,109 +122,23 @@ export function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.white },
+  safe: { flex: 1 },
   flex: { flex: 1 },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: spacing.xxl,
-    paddingBottom: spacing.xxxl,
-  },
-
-  // Hero
-  hero: {
-    alignItems: 'center',
-    paddingTop: spacing.xxl,
-    paddingBottom: spacing.xl,
-    marginBottom: spacing.md,
-  },
-  heroIllustration: {
-    width: 120,
-    height: 120,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.primaryBg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.md,
-  },
+  scroll: { flexGrow: 1, paddingHorizontal: spacing.xxl, paddingBottom: spacing.xxxl },
+  hero: { alignItems: 'center', paddingTop: spacing.xxl, paddingBottom: spacing.xl, marginBottom: spacing.md },
+  heroIllustration: { width: 120, height: 120, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
   heroIcon: { fontSize: 52 },
-
-  // Copy
-  title: {
-    fontSize: fontSize.xxl,
-    fontWeight: fontWeight.extrabold,
-    color: colors.neutral900,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  subtitle: {
-    fontSize: fontSize.md,
-    color: colors.neutral500,
-    textAlign: 'center',
-    lineHeight: fontSize.md * 1.5,
-    marginBottom: spacing.xxxl,
-  },
-
-  // Form
+  title: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold, textAlign: 'center', marginBottom: spacing.sm },
+  subtitle: { fontSize: fontSize.md, textAlign: 'center', lineHeight: fontSize.md * 1.5, marginBottom: spacing.xxxl },
   form: { gap: 0 },
   iconText: { fontSize: 18 },
-
   forgotRow: { alignItems: 'flex-end', marginTop: -spacing.sm, marginBottom: spacing.xl },
-  forgotText: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: fontWeight.medium,
-  },
-
-  apiError: {
-    color: colors.danger,
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
-
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: 15,
-    alignItems: 'center',
-    ...shadows.primary,
-  },
-  buttonDisabled: {
-    backgroundColor: colors.neutral200,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonText: {
-    color: colors.white,
-    fontSize: fontSize.md,
-    fontWeight: fontWeight.bold,
-  },
-
-  // Biometric
-  biometricRow: {
-    alignItems: 'center',
-    marginTop: spacing.xxl,
-    gap: spacing.sm,
-  },
-  biometricBtn: {
-    width: 56,
-    height: 56,
-    borderRadius: borderRadius.full,
-    backgroundColor: colors.neutral100,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  biometricLabel: {
-    fontSize: fontSize.sm,
-    color: colors.neutral500,
-  },
-
-  // Footer
-  footer: {
-    fontSize: fontSize.xs,
-    color: colors.neutral400,
-    textAlign: 'center',
-    marginTop: spacing.xxxl,
-  },
+  forgotText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
+  apiError: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.md },
+  button: { borderRadius: borderRadius.lg, paddingVertical: 15, alignItems: 'center' },
+  buttonText: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
+  biometricRow: { alignItems: 'center', marginTop: spacing.xxl, gap: spacing.sm },
+  biometricBtn: { width: 56, height: 56, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
+  biometricLabel: { fontSize: fontSize.sm },
+  footer: { fontSize: fontSize.xs, textAlign: 'center', marginTop: spacing.xxxl },
 });

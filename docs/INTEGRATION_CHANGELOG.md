@@ -1435,3 +1435,290 @@ activeTab === 'completed' ? 'Sin entregas completadas'
 ---
 
 *Actualización: 10 de abril de 2026 — Dashboard funcional v1.0*
+
+
+---
+
+## 9. Sistema de Temas — Dark Mode / Light Mode (Abril 2026)
+
+### Contexto
+
+Se implementó y corrigió el sistema completo de temas dinámicos (dark/light mode) en la app. El objetivo fue eliminar todos los colores hardcodeados de componentes y pantallas, y garantizar que cada elemento visual responda correctamente al tema activo.
+
+> **Restricción clave:** Solo se modificaron estilos y colores. Ningún hook, store, API ni lógica de negocio fue alterada.
+
+---
+
+### Arquitectura del sistema de temas
+
+| Archivo | Rol |
+|---|---|
+| `src/shared/ui/colors.ts` | Paleta light mode — fuente de verdad para tokens de color |
+| `src/shared/ui/darkColors.ts` | Paleta dark mode — mismos tokens, valores ajustados para contraste |
+| `src/shared/ui/theme.store.ts` | Store Zustand — gestiona modo activo, persiste en `SecureStore` |
+| `src/shared/ui/useTheme.ts` | Hook principal — expone `colors`, `isDark`, `toggle`, `setMode` |
+| `src/shared/ui/navigationTheme.ts` | Mapea tokens al `Theme` de React Navigation |
+| `src/app/providers/AppProviders.tsx` | Hidrata el tema persistido antes del primer render |
+
+**Regla de uso:** Los componentes siempre deben usar `const { colors } = useTheme()` en lugar de importar `colors` estáticamente. Los imports estáticos se congelan en el valor del momento de carga del módulo y no reaccionan a cambios de tema.
+
+---
+
+### CAMBIO-59 — Eliminación de colores hardcodeados en componentes compartidos
+
+**Problema:** Varios componentes tenían `color: '#fff'` en sus `StyleSheet.create` estáticos, lo que impedía que el color del texto respondiera al tema.
+
+**Archivos y correcciones:**
+
+| Archivo | Hardcode eliminado | Reemplazo |
+|---|---|---|
+| `shared/components/ErrorState.tsx` | `color: '#fff'` en `buttonText` | `{ color: colors.white }` inline |
+| `shared/components/NetworkBanner.tsx` | `color: '#fff'` en `text` | `{ color: colors.white }` inline |
+
+**Patrón aplicado:** El color se movió del `StyleSheet.create` estático a un inline style dinámico en el JSX, donde `colors` ya está disponible desde `useTheme()`.
+
+---
+
+### CAMBIO-60 — Eliminación de colores hardcodeados en pantallas de features
+
+**Problema:** Múltiples pantallas tenían `color: '#fff'` y `color: '#fff'` en `ActivityIndicator` dentro de `StyleSheet.create`, haciendo que el texto de botones y spinners no respondiera al tema.
+
+**Archivos y correcciones:**
+
+| Archivo | Hardcode eliminado | Reemplazo |
+|---|---|---|
+| `features/workday/screens/WorkdayScreen.tsx` | `color: '#fff'` en `btnText` + `ActivityIndicator` (×2) | `{ color: colors.white }` inline + `color={colors.white}` |
+| `features/services/screens/ServiceDetailScreen.tsx` | `color: '#fff'` en `actionBtnText` y modal `btnText` | `{ color: colors.white }` inline |
+| `features/services/screens/ServiceDetailScreen.tsx` | `rgba(0,0,0,0.45)` en overlay del modal | `colors.black + '73'` (hex opacity equivalente) |
+| `features/evidence/components/EvidenceCapture.tsx` | `color: '#fff'` en `btnText` + `ActivityIndicator` | `{ color: colors.white }` inline + `color={colors.white}` |
+| `features/auth/screens/LoginScreen.tsx` | `color: '#fff'` en `buttonText` | `{ color: colors.white }` inline |
+| `features/auth/screens/LoginScreen.tsx` | `backgroundColor: colors.white` en `SafeAreaView` | `colors.background` — fondo correcto según tema |
+
+---
+
+### CAMBIO-61 — Corrección del fondo de LoginScreen en dark mode
+
+**Problema:** `LoginScreen` usaba `colors.white` como fondo del `SafeAreaView`. En dark mode el fondo quedaba blanco en lugar de oscuro.
+
+**Causa raíz:** El fondo debía ser `colors.background` (que en dark mode es `#0B121E`) no `colors.white`.
+
+**Solución:** `backgroundColor: colors.white` → `backgroundColor: colors.background`.
+
+**Archivos modificados:**
+- `src/features/auth/screens/LoginScreen.tsx`
+
+---
+
+### CAMBIO-62 — Sistema de sombras dinámico
+
+**Problema:** `shadows.ts` tenía `shadowColor: '#000'` y `shadowColor: '#2563EB'` hardcodeados como constantes internas. En iOS, el `shadowColor` afecta visualmente la sombra y debería usar el token del tema.
+
+**Solución:** Las constantes internas se mantienen como fallback, pero todos los componentes que usan sombras ahora pasan `shadowColor` dinámico inline:
+
+```tsx
+// Antes
+<View style={[styles.card, { backgroundColor: colors.surface }, shadows.sm]}>
+
+// Después
+<View style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.black }, shadows.sm]}>
+```
+
+Para sombras de color primario:
+```tsx
+<View style={[styles.heroCard, { backgroundColor: colors.primary, shadowColor: colors.primary }, shadows.primary]}>
+```
+
+**Archivos modificados:**
+- `src/features/workday/screens/WorkdayScreen.tsx` (×2 sombras)
+- `src/features/dashboard/components/KPIBox.tsx`
+- `src/features/dashboard/components/ActiveServiceCard.tsx`
+- `src/features/services/components/ServiceCard.tsx` (×3 variantes de card)
+- `src/features/earnings/screens/EarningsScreen.tsx` (×5 elementos con sombra)
+- `src/features/auth/screens/LoginScreen.tsx` (×2 sombras)
+
+---
+
+### CAMBIO-63 — Corrección del splash de carga en AppProviders
+
+**Problema:** El spinner de carga inicial (antes de hidratar el tema) usaba colores hardcodeados:
+```tsx
+backgroundColor: '#0B121E'  // dark background hardcodeado
+color="#2563EB"              // primary hardcodeado
+```
+
+**Causa raíz:** El comentario decía "useTheme() no puede usarse antes de la hidratación", pero `themeColors` del store ya estaba disponible en el mismo componente.
+
+**Solución:** Se usa `themeColors` (ya suscrito al store) en lugar de valores literales:
+```tsx
+backgroundColor: themeColors.background
+color={themeColors.primary}
+```
+
+**Archivos modificados:**
+- `src/app/providers/AppProviders.tsx`
+
+---
+
+### CAMBIO-64 — Mapa de Leaflet con colores dinámicos
+
+**Problema:** `TrackingMap.tsx` generaba HTML de Leaflet con colores hardcodeados en el string:
+```js
+background:#2563EB;border:3px solid #fff;box-shadow:0 0 0 4px rgba(37,99,235,0.3)
+```
+
+**Causa raíz:** La función `buildLeafletHtml` no recibía los colores del tema como parámetros.
+
+**Solución:** La función ahora acepta `primaryColor` y `borderColor` como parámetros. El `useMemo` los pasa desde `colors`:
+```tsx
+const mapHtml = useMemo(() => {
+  if (latitude == null || longitude == null) return null;
+  return buildLeafletHtml(latitude, longitude, colors.primary, colors.white);
+}, [latitude, longitude, colors.primary, colors.white]);
+```
+
+El halo de la sombra usa `${primaryColor}4D` (hex opacity 30%).
+
+**Archivos modificados:**
+- `src/features/tracking/components/TrackingMap.tsx`
+
+---
+
+### CAMBIO-65 — Color de notificación de tracking dinámico
+
+**Problema:** `useLocation.ts` tenía `notificationColor: '#2563EB'` hardcodeado en la configuración del `foregroundService` de Android.
+
+**Causa raíz:** El `foregroundService` se ejecuta en un background task fuera del contexto de React, por lo que no puede usar `useTheme()`. Sin embargo, el valor podía referenciarse desde el token estático.
+
+**Solución:** Se importa `colors` estáticamente desde `colors.ts` y se usa `colors.primary`:
+```ts
+import { colors } from '@/shared/ui/colors';
+// ...
+notificationColor: colors.primary,
+```
+
+**Archivos modificados:**
+- `src/features/tracking/hooks/useLocation.ts`
+
+---
+
+### CAMBIO-66 — Corrección de tokens de texto en dark mode (legibilidad)
+
+**Problema:** En dark mode el texto principal era ilegible. Los tokens `neutral800` y `neutral900` en `darkColors.ts` tenían valores de fondo oscuro en lugar de valores de texto claro.
+
+**Causa raíz:** Los neutrals del dark mode estaban definidos con la misma semántica que en light mode (escala de oscuro a claro), pero en dark mode la escala debe invertirse para texto sobre fondos oscuros.
+
+**Antes:**
+```ts
+neutral500:   '#475569', // muy oscuro — invisible sobre surface dark
+neutral800:   '#1E293B', // casi igual al surface — texto invisible
+neutral900:   '#0F172A', // igual al background — texto invisible
+```
+
+**Después:**
+```ts
+neutral500:   '#94A3B8', // texto terciario / subtítulos — legible
+neutral800:   '#E2E8F0', // texto principal sobre superficies oscuras
+neutral900:   '#F8FAFC', // títulos y texto de mayor jerarquía
+```
+
+**Archivos modificados:**
+- `src/shared/ui/darkColors.ts`
+
+---
+
+### CAMBIO-67 — Fondo de la barra de tabs dinámico en ServicesScreen
+
+**Problema:** El contenedor de tabs de filtro (`tabsContainer`) usaba `colors.neutral100` como fondo. En dark mode ese token es `#E2E8F0` (claro), haciendo que la barra apareciera blanca sobre el fondo oscuro.
+
+**Causa raíz:** `neutral100` en dark mode es un color de texto/borde, no un color de superficie. El contenedor de tabs necesita un color de superficie oscura.
+
+**Solución:** Cambiado a `colors.surfaceRaised` que en dark mode es `#1A2840` y en light mode es `#FFFFFF`.
+
+```tsx
+// Antes
+<View style={[styles.tabsContainer, { backgroundColor: colors.neutral100 }]}>
+
+// Después
+<View style={[styles.tabsContainer, { backgroundColor: colors.surfaceRaised }]}>
+```
+
+**Archivos modificados:**
+- `src/features/services/screens/ServicesScreen.tsx`
+
+---
+
+### CAMBIO-68 — Eliminación de bordes en la barra de filtros
+
+**Problema:** La barra de filtros con tabs mostraba dos líneas divisorias (una bajo el header y otra bajo los tabs) que visualmente no eran deseadas.
+
+**Causa raíz:** Los estilos `header` y `tabsWrapper` tenían `borderBottomWidth: 1` con `borderBottomColor` en el JSX inline.
+
+**Solución:** Eliminados `borderBottomWidth: 1` de ambos estilos y sus referencias `borderBottomColor` del JSX.
+
+**Archivos modificados:**
+- `src/features/services/screens/ServicesScreen.tsx`
+
+---
+
+### CAMBIO-69 — Overlay del modal de pago dinámico
+
+**Problema:** El overlay del `PaymentModal` en `ServiceDetailScreen` usaba `rgba(0,0,0,0.45)` hardcodeado en `StyleSheet.create`, que no puede acceder al tema.
+
+**Solución:** El `backgroundColor` del overlay se movió a inline style usando `colors.black + '73'` (equivalente hex al 45% de opacidad):
+
+```tsx
+// Antes (en StyleSheet.create)
+overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }
+
+// Después (inline en JSX, colors viene como prop)
+<View style={[modalStyles.overlay, { backgroundColor: colors.black + '73' }]}>
+```
+
+**Archivos modificados:**
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-70 — Overlays semitransparentes en EarningsScreen
+
+**Problema:** El hero card de ganancias usaba `rgba(255,255,255,0.8)` y `rgba(255,255,255,0.2)` para el label y el badge sobre el fondo primario.
+
+**Solución:**
+- Label: `color: 'rgba(255,255,255,0.8)'` → `{ color: colors.white, opacity: 0.8 }`
+- Badge: `backgroundColor: 'rgba(255,255,255,0.2)'` → `{ backgroundColor: colors.primaryDark }`
+
+**Archivos modificados:**
+- `src/features/earnings/screens/EarningsScreen.tsx`
+
+---
+
+### Resumen de cambios — Sistema de temas (Abril 2026)
+
+| ID | Cambio | Archivos afectados |
+|---|---|---|
+| CAMBIO-59 | `#fff` en componentes compartidos | `ErrorState.tsx`, `NetworkBanner.tsx` |
+| CAMBIO-60 | `#fff` en pantallas de features | `WorkdayScreen.tsx`, `ServiceDetailScreen.tsx`, `EvidenceCapture.tsx`, `LoginScreen.tsx` |
+| CAMBIO-61 | Fondo de LoginScreen corregido a `colors.background` | `LoginScreen.tsx` |
+| CAMBIO-62 | `shadowColor` dinámico en todos los componentes con sombra | 6 archivos |
+| CAMBIO-63 | Splash de carga usa `themeColors` del store | `AppProviders.tsx` |
+| CAMBIO-64 | HTML de Leaflet con colores dinámicos | `TrackingMap.tsx` |
+| CAMBIO-65 | `notificationColor` usa token estático `colors.primary` | `useLocation.ts` |
+| CAMBIO-66 | Tokens de texto dark mode corregidos para legibilidad | `darkColors.ts` |
+| CAMBIO-67 | Fondo de tabs usa `colors.surfaceRaised` | `ServicesScreen.tsx` |
+| CAMBIO-68 | Bordes de la barra de filtros eliminados | `ServicesScreen.tsx` |
+| CAMBIO-69 | Overlay del modal de pago dinámico | `ServiceDetailScreen.tsx` |
+| CAMBIO-70 | Overlays semitransparentes en hero card | `EarningsScreen.tsx` |
+
+### Criterios de validación
+
+| Verificación | Resultado |
+|---|---|
+| `getDiagnostics` en todos los archivos modificados | ✅ 0 errores |
+| Ningún `#hex` hardcodeado fuera de archivos de tokens | ✅ |
+| Ningún `rgba()` hardcodeado en componentes | ✅ |
+| Ningún `'white'` / `'black'` literal en estilos | ✅ |
+| Texto legible en dark mode (`neutral800`, `neutral900` corregidos) | ✅ |
+| Barra de tabs oscura en dark mode | ✅ |
+| Sombras iOS usan `shadowColor` del tema | ✅ |
+
+*Actualización: 12 de abril de 2026 — Dark Mode completo v1.0*

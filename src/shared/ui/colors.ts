@@ -37,8 +37,11 @@ export const colors = {
   black: '#000000',
   transparent: 'transparent',
 
-  // Background
+  // Background & surfaces
   background: '#F4F6FA',
+  surface: '#FFFFFF',       // cards, headers, tab bar, modales
+  surfaceRaised: '#FFFFFF', // cards elevadas (mismo en light)
 } as const;
 
 export type ColorKey = keyof typeof colors;
+

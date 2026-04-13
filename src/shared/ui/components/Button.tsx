@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { colors } from '../colors';
+import { useTheme } from '../useTheme';
 import { fontSize, fontWeight } from '../typography';
 import { borderRadius, spacing } from '../spacing';
 
@@ -27,14 +27,6 @@ interface ButtonProps {
   icon?: React.ReactNode;
 }
 
-const variantStyles: Record<Variant, { bg: string; text: string; border?: string }> = {
-  primary: { bg: colors.primary, text: colors.white },
-  outline: { bg: colors.transparent, text: colors.primary, border: colors.primary },
-  ghost: { bg: colors.transparent, text: colors.primary },
-  success: { bg: colors.success, text: colors.white },
-  danger: { bg: colors.danger, text: colors.white },
-};
-
 const sizeStyles: Record<Size, { paddingVertical: number; paddingHorizontal: number; fontSize: number }> = {
   sm: { paddingVertical: spacing.sm, paddingHorizontal: spacing.md, fontSize: fontSize.sm },
   md: { paddingVertical: 13, paddingHorizontal: spacing.lg, fontSize: fontSize.md },
@@ -53,9 +45,19 @@ export function Button({
   textStyle,
   icon,
 }: ButtonProps) {
-  const v = variantStyles[variant];
+  const { colors } = useTheme();
   const s = sizeStyles[size];
   const isDisabled = disabled || loading;
+
+  const variantMap = {
+    primary: { bg: colors.primary, text: colors.white, border: undefined },
+    outline: { bg: colors.transparent, text: colors.primary, border: colors.primary },
+    ghost: { bg: colors.transparent, text: colors.primary, border: undefined },
+    success: { bg: colors.success, text: colors.white, border: undefined },
+    danger: { bg: colors.danger, text: colors.white, border: undefined },
+  };
+
+  const v = variantMap[variant];
 
   return (
     <TouchableOpacity

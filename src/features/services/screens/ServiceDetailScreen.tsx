@@ -15,6 +15,7 @@ import { useServicesStore } from '../store/servicesStore';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useLocation } from '@/features/tracking/hooks/useLocation';
 import { EvidenceCapture } from '@/features/evidence/components/EvidenceCapture';
+import { CourierServiceMap } from '../components/CourierServiceMap';
 import type { ServicesStackParamList } from '../navigation/ServicesNavigator';
 import type { PaymentStatus } from '../types/services.types';
 
@@ -101,6 +102,20 @@ export function ServiceDetailScreen() {
         <View style={styles.statusRow}>
           <StatusBadge status={service.status} />
         </View>
+
+        {/* Map — shown when service has geocoded coordinates */}
+        {service.origin_lat != null && service.destination_lat != null && (
+          <CourierServiceMap
+            originLat={Number(service.origin_lat)}
+            originLng={Number(service.origin_lng!)}
+            originAddress={service.origin_address}
+            destinationLat={Number(service.destination_lat)}
+            destinationLng={Number(service.destination_lng!)}
+            destinationAddress={service.destination_address}
+            courierLat={latitude}
+            courierLng={longitude}
+          />
+        )}
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Row label="Origen" value={service.origin_address} colors={colors} />

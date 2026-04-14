@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NetworkBanner } from '@/shared/components/NetworkBanner';
 import { useThemeStore } from '@/shared/ui/theme.store';
 import { lightNavigationTheme, darkNavigationTheme } from '@/shared/ui/navigationTheme';
+import { useMapDefaultsStore } from '@/shared/utils/mapDefaults';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,10 +23,12 @@ export function AppProviders({ children }: AppProvidersProps) {
   const isHydrated = useThemeStore((s) => s.isHydrated);
   const isDark = useThemeStore((s) => s.isDark);
   const themeColors = useThemeStore((s) => s.colors);
+  const hydrateMapDefaults = useMapDefaultsStore((s) => s.hydrate);
 
   useEffect(() => {
     hydrate();
-  }, [hydrate]);
+    hydrateMapDefaults();
+  }, [hydrate, hydrateMapDefaults]);
 
   // Block render until persisted theme is loaded — prevents light→dark flash
   // Note: uses themeColors from store directly since useTheme() is not available before hydration

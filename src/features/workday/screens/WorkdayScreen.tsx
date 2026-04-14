@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -17,6 +18,8 @@ import { shadows } from '@/shared/ui/shadows';
 import { useTheme } from '@/shared/ui/useTheme';
 import { useWorkday } from '../hooks/useWorkday';
 import { useLogout } from '@/features/auth/hooks/useLogout';
+import { useMapDefaultsStore } from '@/shared/utils/mapDefaults';
+import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
 
 export function WorkdayScreen() {
   const user = useAuthStore((s) => s.user);
@@ -24,6 +27,28 @@ export function WorkdayScreen() {
   const { loading, startWorkday, endWorkday } = useWorkday();
   const { logout } = useLogout();
   const { colors, isDark, toggle } = useTheme();
+  const { defaults: mapDefaults, setDefaults: setMapDefaults } = useMapDefaultsStore();
+  const [cityInput, setCityInput] = useState('');
+  const [citySearching, setCitySearching] = useState(false);
+
+  const handleSetCity = async () => {
+    const trimmed = cityInput.trim();
+    if (!trimmed) return;
+    setCitySearching(true);
+    try {
+      interface GeoResult { latitude: number; longitude: number; display_name: string; }
+      const result = await apiClient
+        .post<ApiResponse<GeoResult>>('/geocoding/forward', { address: trimmed })
+        .then(unwrap);
+      await setMapDefaults({ lat: result.latitude, lng: result.longitude, label: result.display_name });
+      setCityInput('');
+      Alert.alert('Ciudad actualizada', result.display_name);
+    } catch {
+      Alert.alert('Error', 'No se encontró la ciudad. Intenta con un nombre más específico.');
+    } finally {
+      setCitySearching(false);
+    }
+  };
 
   const isAvailable = user?.operationalStatus === 'AVAILABLE';
   const activeCount = services.filter(
@@ -169,6 +194,38 @@ export function WorkdayScreen() {
         </View>
       </View>
 
+      {/* ── Map city config ── */}
+      <View style={[styles.settingsCard, { backgroundColor: colors.surface, shadowColor: colors.black }, shadows.sm]}>
+        <Text style={[styles.settingLabel, { color: colors.neutral800, marginBottom: spacing.xs }]}>
+          🗺️  Ciudad por defecto del mapa
+        </Text>
+        <Text style={[styles.settingDesc, { color: colors.neutral500, marginBottom: spacing.sm }]}>
+          Actual: {mapDefaults.label}
+        </Text>
+        <View style={styles.cityRow}>
+          <TextInput
+            value={cityInput}
+            onChangeText={setCityInput}
+            placeholder="Ej: Bucaramanga, Colombia"
+            placeholderTextColor={colors.neutral400}
+            style={[styles.cityInput, { borderColor: colors.neutral200, color: colors.neutral800, backgroundColor: colors.background }]}
+            onSubmitEditing={handleSetCity}
+            returnKeyType="done"
+          />
+          <TouchableOpacity
+            style={[styles.cityBtn, { backgroundColor: colors.primary }, (citySearching || !cityInput.trim()) && styles.btnDisabled]}
+            onPress={handleSetCity}
+            disabled={citySearching || !cityInput.trim()}
+            activeOpacity={0.85}
+          >
+            {citySearching
+              ? <ActivityIndicator color={colors.white} size="small" />
+              : <Text style={[styles.cityBtnText, { color: colors.white }]}>Guardar</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </View>
+
       {/* ── Logout ── */}
       <TouchableOpacity
         style={[
@@ -263,4 +320,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoutText: { fontSize: fontSize.md, fontWeight: fontWeight.medium },
+
+  cityRow: { flexDirection: 'row', gap: spacing.sm },
+  cityInput: {
+    flex: 1,
+    height: 40,
+    borderWidth: 1,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    fontSize: fontSize.sm,
+  },
+  cityBtn: {
+    paddingHorizontal: spacing.md,
+    height: 40,
+    borderRadius: borderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 72,
+  },
+  cityBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
 });

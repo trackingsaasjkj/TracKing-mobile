@@ -1722,3 +1722,261 @@ overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-e
 | Sombras iOS usan `shadowColor` del tema | ✅ |
 
 *Actualización: 12 de abril de 2026 — Dark Mode completo v1.0*
+
+
+---
+
+## 12. Implementación del mapa con Maptiler + TrackingScreen completo (Abril 2026)
+
+### Contexto
+
+Se realizó la migración completa del sistema de mapas de OpenStreetMap directo a Maptiler, se implementó la pantalla dedicada de mapa (`TrackingScreen`) con visualización de origen/destino del servicio activo, y se resolvió el problema de doble interval de tracking al introducir un store compartido de coordenadas.
+
+---
+
+### CAMBIO-52 — Migración de tiles OSM a Maptiler
+
+**Problema:** `TrackingMap` y `CourierServiceMap` usaban tiles directos de `tile.openstreetmap.org`. Los servidores de OSM tienen políticas de uso que restringen apps comerciales con alto volumen de requests. Con muchos mensajeros activos simultáneamente, los tiles podían bloquearse o degradarse.
+
+**Decisión técnica:** Maptiler usa los mismos datos de OpenStreetMap pero con CDN propio, free tier de 100k tiles/mes y tiers pagos predecibles. El cambio es solo de URL — la lógica de Leaflet no se modifica.
+
+**Solución:** Reemplazada la URL del `L.tileLayer` en ambos componentes:
+
+```javascript
+// Antes
+'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
+
+// Después
+'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${MAPTILER_KEY}'
+```
+
+**Archivos modificados:**
+- `src/features/tracking/components/TrackingMap.tsx`
+- `src/features/services/components/CourierServiceMap.tsx`
+
+---
+
+### CAMBIO-53 — Centralización de la API key en `src/config/map.ts`
+
+**Problema:** Ambos componentes tenían `const MAPTILER_KEY = 'YOUR_MAPTILER_API_KEY'` hardcodeado como placeholder. Esto rompía la carga de tiles en producción (403 de Maptiler) y duplicaba la configuración.
+
+**Solución:** Creado `src/config/map.ts` como fuente única de verdad:
+
+```typescript
+export const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY ?? '';
+
+if (__DEV__ && !MAPTILER_KEY) {
+  console.warn('[map.ts] EXPO_PUBLIC_MAPTILER_KEY is missing. Map tiles will fail (403).');
+}
+```
+
+Ambos componentes importan `MAPTILER_KEY` desde este archivo. El warning en `__DEV__` facilita detectar el problema durante desarrollo sin romper producción.
+
+**Archivos creados:**
+- `src/config/map.ts`
+
+**Archivos modificados:**
+- `src/features/tracking/components/TrackingMap.tsx`
+- `src/features/services/components/CourierServiceMap.tsx`
+
+---
+
+### CAMBIO-54 — Variable de entorno `EXPO_PUBLIC_MAPTILER_KEY` en `.env`
+
+**Problema:** El `.env` tenía `EXPO_PUBLIC_MAPTILER_KEY= FzRXuyfOiBQoREHvTQxb` con un espacio extra antes del valor. Algunos parsers de dotenv incluyen el espacio en el string, lo que causaría que la key llegara como ` FzRXuyfOiBQoREHvTQxb` a Maptiler (403).
+
+**Solución:** Corregido el `.env` eliminando el espacio:
+
+```dotenv
+EXPO_PUBLIC_MAPTILER_KEY=FzRXuyfOiBQoREHvTQxb
+```
+
+El prefijo `EXPO_PUBLIC_` es obligatorio — Metro elimina del bundle del cliente cualquier variable sin ese prefijo por seguridad.
+
+**Archivos modificados:**
+- `.env`
+
+---
+
+### CAMBIO-55 — `postMessage` para actualizar marcador sin reload del WebView
+
+**Problema:** `TrackingMap` reconstruía el HTML completo de Leaflet cada vez que cambiaban las coordenadas (cada 15s), causando que el WebView se recargara entero. Esto producía un parpadeo visible en el mapa en cada actualización de posición.
+
+**Causa raíz:** `useMemo` tenía `[latitude, longitude]` como dependencias, recalculando el HTML en cada tick del GPS.
+
+**Solución:**
+
+1. El HTML se construye **una sola vez** usando las coordenadas iniciales (guardadas en `useRef`)
+2. Las actualizaciones posteriores se envían via `webViewRef.current.postMessage()`
+3. El JS dentro del WebView escucha el mensaje y llama `marker.setLatLng()` + `map.panTo()` — sin reload
+
+```typescript
+// React Native → WebView
+webViewRef.current.postMessage(JSON.stringify({ lat: latitude, lng: longitude }));
+
+// Dentro del HTML de Leaflet
+document.addEventListener('message', handleMessage);  // Android
+window.addEventListener('message', handleMessage);    // iOS
+
+function handleMessage(event) {
+  var data = JSON.parse(event.data);
+  marker.setLatLng([data.lat, data.lng]);
+  map.panTo([data.lat, data.lng]);
+}
+```
+
+El mismo patrón ya existía en `CourierServiceMap` para el pin del courier — se aplicó consistentemente a `TrackingMap`.
+
+**Archivos modificados:**
+- `src/features/tracking/components/TrackingMap.tsx`
+
+---
+
+### CAMBIO-56 — `useTrackingStore` — store compartido de coordenadas GPS
+
+**Problema:** `useLocation` se llama en `TrackingScreen` (siempre montado como tab) y también se llamaba en `ServiceDetailScreen`. Dos instancias del hook = dos foreground intervals de 15s = el backend recibe el doble de requests de ubicación.
+
+**Solución:** Creado `src/features/tracking/store/trackingStore.ts` — Zustand store que actúa como canal de comunicación entre el hook y los consumidores:
+
+```typescript
+interface TrackingState {
+  latitude: number | null;
+  longitude: number | null;
+  permissionDenied: boolean;
+  setCoords: (lat: number, lng: number) => void;
+  setPermissionDenied: (denied: boolean) => void;
+  clearCoords: () => void;
+}
+```
+
+`useLocation` escribe en el store en cada ciclo. Los componentes que solo necesitan leer las coords usan `useTrackingCoords()` — hook de solo lectura exportado desde `useLocation.ts`.
+
+**Archivos creados:**
+- `src/features/tracking/store/trackingStore.ts`
+
+**Archivos modificados:**
+- `src/features/tracking/hooks/useLocation.ts`
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-57 — `useTrackingCoords()` — hook de solo lectura
+
+**Problema:** `ServiceDetailScreen` necesitaba las coords del courier para pasarlas a `CourierServiceMap`, pero no debía iniciar un segundo interval de tracking.
+
+**Solución:** Exportado `useTrackingCoords()` desde `useLocation.ts`:
+
+```typescript
+// Solo lectura — no inicia tracking, no crea intervals
+export function useTrackingCoords(): LocationState {
+  const latitude = useTrackingStore((s) => s.latitude);
+  const longitude = useTrackingStore((s) => s.longitude);
+  const permissionDenied = useTrackingStore((s) => s.permissionDenied);
+  return { latitude, longitude, permissionDenied };
+}
+```
+
+`ServiceDetailScreen` reemplazó `useLocation({ active: ... })` por `useTrackingCoords()`.
+
+**Archivos modificados:**
+- `src/features/tracking/hooks/useLocation.ts`
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-58 — `TrackingScreen` con visualización de origen y destino del servicio activo
+
+**Problema:** `TrackingScreen` solo mostraba la posición del mensajero (un marcador azul). El mensajero no podía ver en el tab de mapa hacia dónde iba ni de dónde recogía el paquete.
+
+**Solución:** `TrackingScreen` ahora detecta el servicio activo (`ACCEPTED` o `IN_TRANSIT`) desde `useServicesStore` y, si tiene coordenadas geocodificadas, renderiza `CourierServiceMap` en modo `fullScreen` con los tres pins:
+
+```
+operationalStatus !== 'IN_SERVICE'  →  "Sin ruta activa"
+IN_SERVICE, sin geocoords           →  "Coordenadas no disponibles"
+IN_SERVICE + geocoords              →  CourierServiceMap fullScreen
+```
+
+El servicio activo se lee directamente del store (ya hidratado por `useDashboard`/`useServices`) — sin fetch adicional.
+
+**Archivos modificados:**
+- `src/features/tracking/screens/TrackingScreen.tsx`
+
+---
+
+### CAMBIO-59 — Prop `fullScreen` en `CourierServiceMap`
+
+**Problema:** `CourierServiceMap` tenía altura fija de 260px y bordes redondeados, diseñado para usarse dentro del scroll de `ServiceDetailScreen`. En `TrackingScreen` necesitaba ocupar toda la pantalla.
+
+**Solución:** Agregada prop `fullScreen?: boolean`. Cuando es `true`, el contenedor usa `flex: 1` sin altura fija, sin bordes redondeados y sin margen:
+
+```typescript
+containerFullScreen: {
+  height: undefined,
+  flex: 1,
+  borderRadius: 0,
+  borderWidth: 0,
+  marginVertical: 0,
+},
+```
+
+La lógica del mapa (HTML builder, postMessage, markers) no se modifica.
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+
+---
+
+### CAMBIO-60 — Tab "Mapa" agregado al TabNavigator
+
+**Problema:** `TrackingScreen` existía como archivo pero no estaba conectado a la navegación. No había forma de acceder al mapa desde la app.
+
+**Solución:** Agregado tab `Tracking` al `TabNavigator` entre `Orders` y `Earnings`:
+
+```typescript
+export type MainTabParamList = {
+  Home: undefined;
+  Orders: undefined;
+  Tracking: undefined;   // ← nuevo
+  Earnings: undefined;
+  Config: undefined;
+};
+```
+
+Ícono: `📍` (activo) / `🗺️` (inactivo). Título: `Mapa`.
+
+**Archivos modificados:**
+- `src/app/navigation/TabNavigator.tsx`
+
+---
+
+### Resumen de cambios
+
+| ID | Cambio | Impacto |
+|---|---|---|
+| CAMBIO-52 | Tiles OSM → Maptiler | Tiles confiables para uso comercial |
+| CAMBIO-53 | `src/config/map.ts` — fuente única de la API key | Sin duplicación, warning en dev si falta la key |
+| CAMBIO-54 | `.env` corregido (espacio extra eliminado) | Key llega correctamente a Maptiler |
+| CAMBIO-55 | `postMessage` para actualizar marcador | Sin parpadeo en cada tick de 15s |
+| CAMBIO-56 | `useTrackingStore` — store compartido de coords | Sin doble interval de tracking |
+| CAMBIO-57 | `useTrackingCoords()` — hook read-only | `ServiceDetailScreen` lee coords sin iniciar tracking |
+| CAMBIO-58 | `TrackingScreen` muestra origen + destino del servicio | Mensajero ve la ruta completa en el tab de mapa |
+| CAMBIO-59 | Prop `fullScreen` en `CourierServiceMap` | Mismo componente en dos contextos visuales distintos |
+| CAMBIO-60 | Tab "Mapa" en `TabNavigator` | `TrackingScreen` accesible desde la navegación |
+
+---
+
+### Bugs corregidos
+
+| ID | Problema | Impacto | Resolución |
+|---|---|---|---|
+| BUG-32 | Tiles OSM bloqueables en producción | Mapa sin tiles con muchos mensajeros | Migración a Maptiler |
+| BUG-33 | `MAPTILER_KEY` hardcodeado como placeholder | 403 en todos los tiles | `src/config/map.ts` + `.env` |
+| BUG-34 | Espacio extra en `.env` antes del valor | Key inválida enviada a Maptiler | `.env` corregido |
+| BUG-35 | WebView recargaba entero cada 15s | Parpadeo visible en el mapa | `postMessage` + `marker.setLatLng()` |
+| BUG-36 | Doble interval de tracking (dos instancias de `useLocation`) | Doble envío de ubicación al backend | `useTrackingStore` + `useTrackingCoords` |
+| BUG-37 | `TrackingScreen` sin origen/destino del servicio | Mensajero no veía la ruta en el tab de mapa | `CourierServiceMap fullScreen` con servicio activo |
+| BUG-38 | `TrackingScreen` no conectado al navegador | Tab de mapa inaccesible | Tab `Tracking` en `TabNavigator` |
+
+---
+
+*Actualización: 14 de abril de 2026 — Maptiler + TrackingScreen v2.0*

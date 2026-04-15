@@ -2,36 +2,44 @@
 
 ## Overview
 
-Added geographic coordinates support to the service model and a new `CourierServiceMap` component that displays pickup and delivery pins on an interactive map inside `ServiceDetailScreen`. When a service has geocoded coordinates, the courier sees both points on the map with their addresses in callouts. Also added city default configuration in the Config tab (WorkdayScreen).
+Soporte de coordenadas geográficas en el modelo de servicio y componente `CourierServiceMap` que muestra los puntos de recogida y entrega en un mapa interactivo. El mapa aparece en `ServiceDetailScreen` (vista compacta) y en `TrackingScreen` (pantalla completa). También incluye configuración de ciudad por defecto en el tab Config.
 
 ---
 
-## Architecture
+## Arquitectura
 
 ```
 ServiceDetailScreen
   └── service.origin_lat && service.destination_lat?
-        ├── YES → <CourierServiceMap originLat/Lng destinationLat/Lng />
-        │           ├── <MapView> with fitToCoordinates()
-        │           ├── Marker green  #4CAF7D  (recogida)
-        │           ├── Marker red    #E53E3E  (entrega)
-        │           └── Marker blue   #3B82F6  (courier GPS, if available)
-        └── NO  → text addresses only
+        ├── SÍ → <CourierServiceMap originLat/Lng destinationLat/Lng courierLat/Lng />
+        │           ├── WebView + Leaflet + Maptiler tiles
+        │           ├── Pin verde   #4CAF7D  (recogida)
+        │           ├── Pin rojo    #E53E3E  (entrega)
+        │           └── Pin azul    primary  (courier GPS, si disponible)
+        └── NO → solo direcciones en texto
 
-WorkdayScreen (Config tab)
-  └── City input → POST /api/geocoding/forward → saveMapDefaults()
+TrackingScreen (tab "Mapa")
+  └── servicio activo con geocoords?
+        ├── SÍ → <CourierServiceMap fullScreen />   ← mismo componente, pantalla completa
+        └── NO → estado vacío o aviso de coordenadas
+
+WorkdayScreen (tab Config)
+  └── Input ciudad → POST /api/geocoding/forward → saveMapDefaults()
 ```
 
 ---
 
-## New Files
+## Archivos
 
 ```
 src/features/services/components/
-└── CourierServiceMap.tsx        # MapView with origin/destination/courier pins
+└── CourierServiceMap.tsx        # WebView + Leaflet, pins origen/destino/courier
 
 src/shared/utils/
-└── mapDefaults.ts               # Zustand store + expo-secure-store persistence
+└── mapDefaults.ts               # Zustand store + expo-secure-store para ciudad por defecto
+
+src/config/
+└── map.ts                       # MAPTILER_KEY desde EXPO_PUBLIC_MAPTILER_KEY
 ```
 
 ---
@@ -48,58 +56,97 @@ interface CourierServiceMapProps {
   destinationLat: number;
   destinationLng: number;
   destinationAddress: string;
-  courierLat?: number | null;   // from useLocation hook
+  courierLat?: number | null;   // desde useTrackingCoords()
   courierLng?: number | null;
+  fullScreen?: boolean;         // true → flex:1, sin altura fija ni bordes
 }
 ```
 
-### Behavior
+### Comportamiento
 
-- `onMapReady` calls `mapRef.current?.fitToCoordinates()` with `edgePadding: { top:60, right:60, bottom:60, left:60 }` so both pins are always visible
-- `initialRegion` is computed from the midpoint of origin and destination — prevents blank map before `fitToCoordinates` fires
-- Courier pin (blue) is rendered only when `courierLat != null && courierLng != null`
-- Each pin has a `<Callout>` showing the address label
+- El HTML de Leaflet se construye **una sola vez** con `useMemo` (deps: coords estáticas + colores del tema)
+- `fitBounds` en Leaflet centra el mapa para mostrar todos los pins visibles
+- El pin del courier se actualiza via `postMessage` → `marker.setLatLng()` — sin reload del WebView
+- Popup en cada pin con la dirección correspondiente
 
-### Pin colors
+### Modos de visualización
 
-| Pin | Color | Meaning |
-|-----|-------|---------|
-| Green `#4CAF7D` | Recogida | Pickup point |
-| Red `#E53E3E` | Entrega | Delivery point |
-| Blue `#3B82F6` | Tu ubicación | Courier current GPS |
+| Prop `fullScreen` | Uso | Estilo |
+|---|---|---|
+| `false` (default) | `ServiceDetailScreen` (dentro de scroll) | `height: 260`, bordes redondeados, margen vertical |
+| `true` | `TrackingScreen` (tab dedicado) | `flex: 1`, sin altura fija, sin bordes, sin margen |
+
+### Colores de pins
+
+| Pin | Color | Significado |
+|-----|-------|-------------|
+| Verde `#4CAF7D` | Recogida | Punto de origen |
+| Rojo `#E53E3E` | Entrega | Punto de destino |
+| Azul `colors.primary` | Tu ubicación | Posición GPS actual del courier |
+
+### Proveedor de tiles — Maptiler
+
+```javascript
+L.tileLayer(
+  'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${MAPTILER_KEY}',
+  { maxZoom: 19 }
+).addTo(map);
+```
+
+La key se importa desde `src/config/map.ts` que lee `process.env.EXPO_PUBLIC_MAPTILER_KEY`.
+
+---
+
+## Configuración de la API key
+
+```
+src/config/map.ts          ← fuente única de verdad
+.env                       ← EXPO_PUBLIC_MAPTILER_KEY=tu_key
+```
+
+```typescript
+// src/config/map.ts
+export const MAPTILER_KEY = process.env.EXPO_PUBLIC_MAPTILER_KEY ?? '';
+
+if (__DEV__ && !MAPTILER_KEY) {
+  console.warn('[map.ts] EXPO_PUBLIC_MAPTILER_KEY is missing. Map tiles will fail (403).');
+}
+```
+
+El prefijo `EXPO_PUBLIC_` es obligatorio para que Metro incluya la variable en el bundle del cliente.
 
 ---
 
 ## mapDefaults.ts
 
-Zustand store backed by `expo-secure-store` (key: `map_defaults`). Same pattern as `theme.store.ts`.
+Zustand store respaldado por `expo-secure-store` (key: `map_defaults`). Mismo patrón que `theme.store.ts`.
 
 ```typescript
 interface MapDefaults { lat: number; lng: number; label: string; }
 
-// Default fallback: Bucaramanga (7.119349, -73.122742)
+// Fallback por defecto: Bucaramanga (7.119349, -73.122742)
 
-useMapDefaultsStore.getState().defaults      // current city
-useMapDefaultsStore.getState().setDefaults() // persist new city
-useMapDefaultsStore.getState().hydrate()     // called on app start
+useMapDefaultsStore.getState().defaults      // ciudad actual
+useMapDefaultsStore.getState().setDefaults() // persiste nueva ciudad
+useMapDefaultsStore.getState().hydrate()     // llamado al iniciar la app
 ```
 
-Hydration is called in `AppProviders.tsx` alongside theme hydration — no blocking spinner needed since the map always has the service coordinates as its primary reference.
+La hidratación se llama en `AppProviders.tsx` junto con la del tema — sin spinner bloqueante ya que el mapa siempre tiene las coordenadas del servicio como referencia primaria.
 
 ---
 
-## Modified Files
+## Archivos modificados
 
 ### `services/types/services.types.ts`
 
-Added 6 optional geocoding fields to the `Service` interface:
+6 campos opcionales de geocodificación en la interfaz `Service`:
 
 ```typescript
-origin_lat?:          number | null;
-origin_lng?:          number | null;
-origin_verified?:     boolean;
-destination_lat?:     number | null;
-destination_lng?:     number | null;
+origin_lat?:           number | null;
+origin_lng?:           number | null;
+origin_verified?:      boolean;
+destination_lat?:      number | null;
+destination_lng?:      number | null;
 destination_verified?: boolean;
 ```
 
@@ -114,17 +161,31 @@ destination_verified?: boolean;
     destinationLat={Number(service.destination_lat)}
     destinationLng={Number(service.destination_lng!)}
     destinationAddress={service.destination_address}
-    courierLat={latitude}
+    courierLat={latitude}    // desde useTrackingCoords()
     courierLng={longitude}
   />
 )}
 ```
 
-Fallback: when coordinates are null, only text addresses are shown (existing behavior unchanged).
+Fallback: cuando las coordenadas son null, solo se muestran las direcciones en texto.
+
+### `features/tracking/screens/TrackingScreen.tsx`
+
+```tsx
+<CourierServiceMap
+  originLat={Number(activeService.origin_lat)}
+  originLng={Number(activeService.origin_lng)}
+  originAddress={activeService.origin_address}
+  destinationLat={Number(activeService.destination_lat)}
+  destinationLng={Number(activeService.destination_lng)}
+  destinationAddress={activeService.destination_address}
+  courierLat={latitude}
+  courierLng={longitude}
+  fullScreen   // ← modo pantalla completa
+/>
+```
 
 ### `app/providers/AppProviders.tsx`
-
-Added `hydrateMapDefaults()` call alongside `hydrate()` (theme):
 
 ```typescript
 const hydrateMapDefaults = useMapDefaultsStore((s) => s.hydrate);
@@ -136,38 +197,35 @@ useEffect(() => {
 
 ### `features/workday/screens/WorkdayScreen.tsx`
 
-New "Ciudad por defecto del mapa" section in the Config tab:
-
-- `TextInput` for city name
-- "Guardar" button calls `POST /api/geocoding/forward` via `apiClient`
-- On success: `setMapDefaults({ lat, lng, label })` persists to SecureStore
-- Shows current configured city below the label
-- Error alert if city not found
-
----
-
-## Rules
-
-- Map is shown **only** when both `origin_lat` and `destination_lat` are non-null
-- `Number()` cast is applied to coordinates since Prisma returns `Decimal` which may come as string over JSON
-- Courier GPS pin uses the same `useLocation` hook already present in `ServiceDetailScreen` — no second GPS read
-- City default is per-device (stored in SecureStore), independent from the web frontend's localStorage
+Sección "Ciudad por defecto del mapa" en el tab Config:
+- `TextInput` para nombre de ciudad
+- Botón "Guardar" llama `POST /api/geocoding/forward` via `apiClient`
+- En éxito: `setMapDefaults({ lat, lng, label })` persiste en SecureStore
+- Muestra la ciudad configurada actualmente
+- Alert de error si la ciudad no se encuentra
 
 ---
 
-## Dependencies
+## Reglas
 
-- `react-native-maps` — installed via `npx expo install react-native-maps`
+- El mapa se muestra **solo** cuando `origin_lat` y `destination_lat` son no-null
+- Cast `Number()` aplicado a las coordenadas — Prisma retorna `Decimal` que puede llegar como string en JSON
+- El pin del courier usa coords del `useTrackingStore` — sin segunda lectura GPS
+- La ciudad por defecto es por dispositivo (SecureStore), independiente del localStorage del frontend web
 
 ---
 
-## Completion Criteria
+## Criterios de completitud
 
-- [x] `Service` type includes 6 optional geocoding fields
-- [x] `CourierServiceMap` renders green/red pins with callouts
-- [x] `fitToCoordinates` adjusts zoom to show both pins
-- [x] Courier GPS pin shown when location available
-- [x] Map hidden when coordinates are null — text fallback shown
-- [x] `mapDefaults` store hydrated on app start
-- [x] City configuration UI in WorkdayScreen (Config tab)
-- [x] Property tests P-11 and P-12 passing
+- [x] `Service` incluye 6 campos opcionales de geocodificación
+- [x] `CourierServiceMap` renderiza pins verde/rojo con popups de dirección
+- [x] `fitBounds` ajusta el zoom para mostrar todos los pins
+- [x] Pin del courier mostrado cuando la ubicación está disponible
+- [x] Mapa oculto cuando las coordenadas son null — fallback de texto
+- [x] Store `mapDefaults` hidratado al iniciar la app
+- [x] UI de configuración de ciudad en WorkdayScreen (tab Config)
+- [x] Prop `fullScreen` para uso en TrackingScreen
+- [x] Maptiler como proveedor de tiles (CDN, free tier 100k/mes)
+- [x] API key centralizada en `src/config/map.ts`
+- [x] `postMessage` para actualizar pin del courier sin reload
+- [x] `CourierServiceMap` reutilizado en `TrackingScreen` con `fullScreen`

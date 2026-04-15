@@ -1,20 +1,20 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import * as ExpoLocation from 'expo-location';
 import { locationApi } from '../api/locationApi';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
+import { useTrackingStore } from '../store/trackingStore';
 import { colors } from '@/shared/ui/colors';
 
 const INTERVAL_MS = 15_000;
 
 interface UseLocationOptions {
-  /** Tracking only runs when this is true (service status === IN_TRANSIT) */
+  /** Tracking only runs when this is true (operationalStatus === IN_SERVICE) */
   active: boolean;
 }
 
 export interface LocationState {
   latitude: number | null;
   longitude: number | null;
-  /** Permission was denied by the user */
   permissionDenied: boolean;
 }
 
@@ -22,17 +22,20 @@ export interface LocationState {
  * Manages foreground + background location tracking.
  *
  * Lifecycle:
- *  active=true  → request permissions → start background task → start foreground interval
- *  active=false → stop background task → clear foreground interval
+ *   active=true  → request permissions → start background task → start foreground interval
+ *   active=false → stop background task → clear foreground interval
+ *
+ * Coords are written to useTrackingStore so any screen can read them without
+ * calling this hook a second time. Calling this hook twice with active=true
+ * would create two foreground intervals — avoid that by using useTrackingCoords
+ * in components that only need to read the current position.
  *
  * Error handling:
- *  - Backend 400 → stop tracking (courier left IN_SERVICE state)
- *  - Network errors → swallowed silently (must not interrupt courier flow)
+ *   - Backend 400 → stop tracking (courier left IN_SERVICE state)
+ *   - Network / GPS errors → swallowed silently (must not interrupt courier flow)
  *
  * Background task is defined in tasks/backgroundLocationTask.ts and registered
  * in index.ts before the React tree mounts.
- *
- * Returns current coords so TrackingMap can display them without a second GPS read.
  */
 export function useLocation({ active }: UseLocationOptions): LocationState {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -40,8 +43,12 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
   const backgroundGranted = useRef(false);
   const stoppedByBackend = useRef(false);
 
-  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [permissionDenied, setPermissionDenied] = useState(false);
+  const setCoords = useTrackingStore((s) => s.setCoords);
+  const setPermissionDenied = useTrackingStore((s) => s.setPermissionDenied);
+  const clearCoords = useTrackingStore((s) => s.clearCoords);
+  const latitude = useTrackingStore((s) => s.latitude);
+  const longitude = useTrackingStore((s) => s.longitude);
+  const permissionDenied = useTrackingStore((s) => s.permissionDenied);
 
   // ── Permission helpers ────────────────────────────────────────────────────
 
@@ -51,7 +58,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
     foregroundGranted.current = status === 'granted';
     if (!foregroundGranted.current) setPermissionDenied(true);
     return foregroundGranted.current;
-  }, []);
+  }, [setPermissionDenied]);
 
   const requestBackgroundPermission = useCallback(async (): Promise<boolean> => {
     if (backgroundGranted.current) return true;
@@ -98,8 +105,8 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
         accuracy: ExpoLocation.Accuracy.Balanced,
       });
 
-      // Update coords for display (TrackingMap reads these — no second GPS call needed)
-      setCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      // Write to shared store — TrackingScreen and ServiceDetailScreen both read from there
+      setCoords(loc.coords.latitude, loc.coords.longitude);
 
       await locationApi.send({
         latitude: loc.coords.latitude,
@@ -116,7 +123,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
       }
       // All other errors (network, GPS) are swallowed silently
     }
-  }, [requestForegroundPermission, stopForeground, stopBackground]);
+  }, [requestForegroundPermission, setCoords, stopForeground, stopBackground]);
 
   // ── Start background task ─────────────────────────────────────────────────
 
@@ -126,7 +133,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
       if (!hasBackground) return;
 
       const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-      if (isRunning) return; // already running
+      if (isRunning) return; // already running — guard against double registration
 
       await ExpoLocation.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
         accuracy: ExpoLocation.Accuracy.Balanced,
@@ -149,9 +156,8 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
 
   useEffect(() => {
     if (!active) {
-      stoppedByBackend.current = false; // reset for next activation
-      setCoords(null);
-      setPermissionDenied(false);
+      stoppedByBackend.current = false;
+      clearCoords();
       stopAll();
       return;
     }
@@ -168,11 +174,21 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
     return () => {
       stopAll();
     };
-  }, [active, sendLocation, startBackground, stopAll]);
+  }, [active, sendLocation, startBackground, stopAll, clearCoords]);
 
-  return {
-    latitude: coords?.latitude ?? null,
-    longitude: coords?.longitude ?? null,
-    permissionDenied,
-  };
+  return { latitude, longitude, permissionDenied };
+}
+
+/**
+ * Read-only hook for components that need the current courier coords
+ * but should NOT start/stop the tracking loop themselves.
+ *
+ * Use this in ServiceDetailScreen instead of useLocation to avoid
+ * creating a second foreground interval.
+ */
+export function useTrackingCoords(): LocationState {
+  const latitude = useTrackingStore((s) => s.latitude);
+  const longitude = useTrackingStore((s) => s.longitude);
+  const permissionDenied = useTrackingStore((s) => s.permissionDenied);
+  return { latitude, longitude, permissionDenied };
 }

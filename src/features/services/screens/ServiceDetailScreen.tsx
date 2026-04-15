@@ -12,8 +12,7 @@ import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { StatusBadge } from '../components/StatusBadge';
 import { useServiceDetail, canTransition, nextStatus } from '../hooks/useServices';
 import { useServicesStore } from '../store/servicesStore';
-import { useAuthStore } from '@/features/auth/store/authStore';
-import { useLocation } from '@/features/tracking/hooks/useLocation';
+import { useTrackingCoords } from '@/features/tracking/hooks/useLocation';
 import { EvidenceCapture } from '@/features/evidence/components/EvidenceCapture';
 import { CourierServiceMap } from '../components/CourierServiceMap';
 import type { ServicesStackParamList } from '../navigation/ServicesNavigator';
@@ -45,15 +44,12 @@ export function ServiceDetailScreen() {
   const { performAction, actionLoading, performPaymentAction, paymentLoading } = useServiceDetail();
   const service = useServicesStore((s) => s.services.find((x) => x.id === serviceId));
   const servicesLoaded = useServicesStore((s) => s.services.length > 0 || s.loaded);
-  const operationalStatus = useAuthStore((s) => s.user?.operationalStatus);
 
   const [localError, setLocalError] = useState<string | null>(null);
   const [evidenceUploaded, setEvidenceUploaded] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-  const { latitude, longitude, permissionDenied } = useLocation({
-    active: operationalStatus === 'IN_SERVICE',
-  });
+  const { latitude, longitude, permissionDenied } = useTrackingCoords();
 
   if (!servicesLoaded) {
     return (

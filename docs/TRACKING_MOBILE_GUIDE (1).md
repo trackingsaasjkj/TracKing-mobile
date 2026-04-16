@@ -147,6 +147,53 @@ const res = await fetch(`${BASE_URL}/api/courier/services`, { headers });
 const { data } = await res.json(); // array de servicios
 ```
 
+### Filtrado por estado (ServicesScreen)
+
+La pantalla de servicios usa una barra de pestañas con 3 tabs principales y un menú desplegable (chevron ▾) para opciones adicionales:
+
+| Tab | Estados incluidos | Descripción |
+|-----|------------------|-------------|
+| Asignados | `ASSIGNED` | Servicios pendientes de aceptar |
+| Aceptados | `ACCEPTED` | Servicios aceptados, aún no en ruta |
+| En Ruta | `IN_TRANSIT` | Servicios actualmente en tránsito |
+| ▾ Completados | `DELIVERED` | Solo entregas del día actual |
+| ▾ Historial | `DELIVERED` | Entregas del día actual (historial futuro con paginación) |
+
+El menú desplegable se activa con el ícono chevron (▾) en el cuarto slot de la barra. Cuando una opción del menú está activa, el chevron se reemplaza por el nombre de la opción seleccionada.
+
+> **Nota:** El endpoint `GET /api/courier/services` ya filtra en el backend: retorna todos los servicios no entregados + solo los `DELIVERED` cuyo `delivery_date` corresponde al día actual (00:00–23:59). No es necesario filtrar en el cliente.
+
+### Tipo `Service`
+
+```ts
+interface Service {
+  id: string;
+  status: 'ASSIGNED' | 'ACCEPTED' | 'IN_TRANSIT' | 'DELIVERED';
+  origin_address: string;
+  destination_address: string;
+  destination_name: string;
+  package_details: string;
+  payment_method: 'CASH' | 'TRANSFER' | 'CREDIT';
+  payment_status: 'PAID' | 'UNPAID';
+  is_settled_courier: boolean;
+  is_settled_customer: boolean;
+  total_price: number;
+  delivery_price: number;
+  product_price: number;
+  notes_observations?: string;
+  courier_id?: string;
+  delivery_date?: string | null;  // ISO 8601 — se setea al llegar a DELIVERED
+  created_at?: string;            // ISO 8601 — fecha de creación del servicio
+  // Geocoding
+  origin_lat?: number | null;
+  origin_lng?: number | null;
+  origin_verified?: boolean;
+  destination_lat?: number | null;
+  destination_lng?: number | null;
+  destination_verified?: boolean;
+}
+```
+
 ### Cambiar estado de un servicio
 
 ```ts
@@ -342,15 +389,18 @@ async function detenerTrackingBackground() {
 2.  Cargar perfil                  GET  /api/courier/me
 3.  Iniciar jornada                POST /api/courier/jornada/start
                                         → estado: AVAILABLE
-4.  Ver servicios asignados        GET  /api/courier/services
+4.  Ver servicios (tab Asignados)  GET  /api/courier/services
 5.  Aceptar servicio               POST /api/courier/services/:id/status  { "status": "ACCEPTED" }
+                                        → aparece en tab Aceptados
 6.  Salir a recoger                POST /api/courier/services/:id/status  { "status": "IN_TRANSIT" }
+                                        → aparece en tab En Ruta
                                         → estado mensajero: IN_SERVICE
 7.  Iniciar tracking               iniciarTrackingBackground()
         └─ loop cada 15s           POST /api/courier/location  { lat, lng, accuracy }
 8.  Llegar al destino
 9.  Subir evidencia                POST /api/courier/services/:id/evidence  multipart/form-data (campo: file)
 10. Marcar como entregado          POST /api/courier/services/:id/status  { "status": "DELIVERED" }
+                                        → aparece en tab ▾ Completados (solo si es del día actual)
                                         → estado mensajero: AVAILABLE
 11. Detener tracking               detenerTrackingBackground()
 12. Finalizar jornada              POST /api/courier/jornada/end

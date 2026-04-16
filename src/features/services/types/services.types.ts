@@ -18,6 +18,8 @@ export interface Service {
   product_price: number;
   notes_observations?: string;
   courier_id?: string;
+  delivery_date?: string | null;
+  created_at?: string;
   // Geocoding fields
   origin_lat?: number | null;
   origin_lng?: number | null;

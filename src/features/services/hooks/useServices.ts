@@ -75,22 +75,39 @@ export function useServices() {
 
 /**
  * Lightweight hook for ServiceDetailScreen.
- * BUG-04/11 FIX: reads from store only — no fetch, no duplicate requests.
+ * BUG-04/11 FIX: reads from store first — no duplicate requests for active services.
+ * HISTORY FIX: when service is not in store (came from history), fetches from backend.
  */
-export function useServiceDetail() {
+export function useServiceDetail(serviceId: string) {
   const { updateService } = useServicesStore();
+  const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [paymentLoading, setPaymentLoading] = useState(false);
 
+  // Try store first (active services loaded by useServices)
+  const serviceFromStore = useServicesStore((s) => s.services.find((x) => x.id === serviceId));
+
+  // Fallback: fetch from backend when not in store (e.g. navigating from history)
+  const query = useQuery({
+    queryKey: ['courier-service-detail', serviceId],
+    queryFn: () => servicesApi.getById(serviceId),
+    enabled: !serviceFromStore,   // only fetch if not already in store
+    staleTime: 30_000,
+  });
+
+  const service = serviceFromStore ?? query.data ?? null;
+
   const performAction = useCallback(
-    async (service: Service): Promise<{ ok: boolean; error?: string }> => {
-      const next = nextStatus(service.status);
+    async (svc: Service): Promise<{ ok: boolean; error?: string }> => {
+      const next = nextStatus(svc.status);
       if (!next) return { ok: false, error: 'Accion no disponible' };
 
-      setActionLoading(service.id);
+      setActionLoading(svc.id);
       try {
-        const updated = await servicesApi.updateStatus(service.id, next);
+        const updated = await servicesApi.updateStatus(svc.id, next);
         updateService(updated);
+        // Also update the detail cache so the screen reflects the new state
+        queryClient.setQueryData(['courier-service-detail', svc.id], updated);
         return { ok: true };
       } catch (err: any) {
         return { ok: false, error: err?.userMessage ?? 'Error al actualizar servicio' };
@@ -98,18 +115,19 @@ export function useServiceDetail() {
         setActionLoading(null);
       }
     },
-    [updateService],
+    [updateService, queryClient],
   );
 
   const performPaymentAction = useCallback(
     async (
-      serviceId: string,
+      svcId: string,
       payment_status: import('../types/services.types').PaymentStatus,
     ): Promise<{ ok: boolean; error?: string }> => {
       setPaymentLoading(true);
       try {
-        const updated = await servicesApi.updatePayment(serviceId, payment_status);
+        const updated = await servicesApi.updatePayment(svcId, payment_status);
         updateService(updated);
+        queryClient.setQueryData(['courier-service-detail', svcId], updated);
         return { ok: true };
       } catch (err: any) {
         return { ok: false, error: err?.userMessage ?? 'Error al actualizar pago' };
@@ -117,8 +135,16 @@ export function useServiceDetail() {
         setPaymentLoading(false);
       }
     },
-    [updateService],
+    [updateService, queryClient],
   );
 
-  return { actionLoading, performAction, paymentLoading, performPaymentAction };
+  return {
+    service,
+    isLoading: query.isLoading && !serviceFromStore,
+    isError: query.isError && !serviceFromStore,
+    actionLoading,
+    performAction,
+    paymentLoading,
+    performPaymentAction,
+  };
 }

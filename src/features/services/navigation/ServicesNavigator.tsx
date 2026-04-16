@@ -3,10 +3,12 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTheme } from '@/shared/ui/useTheme';
 import { ServicesScreen } from '../screens/ServicesScreen';
 import { ServiceDetailScreen } from '../screens/ServiceDetailScreen';
+import { ServiceHistoryScreen } from '../screens/ServiceHistoryScreen';
 
 export type ServicesStackParamList = {
   ServicesList: undefined;
   ServiceDetail: { serviceId: string };
+  ServiceHistory: undefined;
 };
 
 const Stack = createNativeStackNavigator<ServicesStackParamList>();
@@ -29,6 +31,11 @@ export function ServicesNavigator() {
         name="ServiceDetail"
         component={ServiceDetailScreen}
         options={{ title: 'Detalle del servicio' }}
+      />
+      <Stack.Screen
+        name="ServiceHistory"
+        component={ServiceHistoryScreen}
+        options={{ title: 'Historial de servicios', headerShown: false }}
       />
     </Stack.Navigator>
   );

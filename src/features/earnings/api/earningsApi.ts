@@ -1,15 +1,9 @@
 import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
 
-export interface EarningsSummary {
-  total_earned: number;
-  total_services: number;
-  total_settlements: number;
-  /** settlements array is also returned but we use the Liquidation[] separately */
-}
-
-export interface Liquidation {
+export interface Settlement {
   id: string;
   courier_id: string;
+  company_id: string;
   total_earned: number;
   total_services: number;
   start_date: string;
@@ -17,25 +11,40 @@ export interface Liquidation {
   created_at: string;
 }
 
+export interface EarningsSummary {
+  total_settlements: number;
+  total_services: number;
+  total_earned: number;
+  /** Full list of settlements included in the summary */
+  settlements: Settlement[];
+}
+
 export const earningsApi = {
   /**
-   * GET /api/liquidations/earnings
-   * Returns earnings summary for the authenticated courier's company.
-   * The courier_id filter is resolved server-side via JWT for COURIER role.
-   * Note: this endpoint requires ADMIN role — for COURIER we derive earnings
-   * from the liquidations list instead.
+   * GET /api/courier/settlements/earnings
+   * Resumen acumulado de ganancias del mensajero autenticado.
+   * El courier_id se resuelve desde el JWT — no se envía en la request.
    */
-  getSummary: async (): Promise<EarningsSummary> => {
-    const res = await apiClient.get<ApiResponse<EarningsSummary>>('/api/liquidations/earnings');
-    return unwrap(res);
-  },
+  getSummary: (): Promise<EarningsSummary> =>
+    apiClient
+      .get<ApiResponse<EarningsSummary>>('/api/courier/settlements/earnings')
+      .then(unwrap),
 
   /**
-   * GET /api/liquidations
-   * Lists courier settlements. Backend scopes by company from JWT.
+   * GET /api/courier/settlements
+   * Lista todas las liquidaciones del mensajero autenticado.
    */
-  getLiquidations: async (): Promise<Liquidation[]> => {
-    const res = await apiClient.get<ApiResponse<Liquidation[]>>('/api/liquidations');
-    return unwrap(res);
-  },
+  getSettlements: (): Promise<Settlement[]> =>
+    apiClient
+      .get<ApiResponse<Settlement[]>>('/api/courier/settlements')
+      .then(unwrap),
+
+  /**
+   * GET /api/courier/settlements/:id
+   * Detalle de una liquidación específica.
+   */
+  getSettlementById: (id: string): Promise<Settlement> =>
+    apiClient
+      .get<ApiResponse<Settlement>>(`/api/courier/settlements/${id}`)
+      .then(unwrap),
 };

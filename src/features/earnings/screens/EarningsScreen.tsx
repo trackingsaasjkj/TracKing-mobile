@@ -8,7 +8,7 @@ import { shadows } from '@/shared/ui/shadows';
 import { LoadingSpinner } from '@/shared/components/LoadingSpinner';
 import { ErrorState } from '@/shared/components/ErrorState';
 import { useEarnings } from '../hooks/useEarnings';
-import type { Liquidation } from '../api/earningsApi';
+import type { Settlement } from '../api/earningsApi';
 
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }).toUpperCase();
@@ -60,7 +60,7 @@ const rowStyles = StyleSheet.create({
   amount: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
 });
 
-function LiquidationRow({ item }: { item: Liquidation }) {
+function LiquidationRow({ item }: { item: Settlement }) {
   const { colors } = useTheme();
   return (
     <View style={[histStyles.row, { backgroundColor: colors.surface, shadowColor: colors.black }, shadows.sm]}>

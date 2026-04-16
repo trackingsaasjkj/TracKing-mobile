@@ -1,74 +1,35 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { earningsApi, type EarningsSummary, type Liquidation } from '../api/earningsApi';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
+import { earningsApi } from '../api/earningsApi';
 
-interface EarningsState {
-  summary: EarningsSummary | null;
-  liquidations: Liquidation[];
-  /** True only on the initial load — use for full-screen spinner */
-  loading: boolean;
-  /** True during pull-to-refresh — use for RefreshControl */
-  refreshing: boolean;
-  error: string | null;
-  refresh: () => void;
-}
+/**
+ * Fetches earnings summary from GET /api/courier/settlements/earnings.
+ * The response includes total_earned, total_services, total_settlements
+ * and the full settlements array — a single request covers everything.
+ *
+ * Previously used /api/liquidations/* (ADMIN-only endpoints) — BUG-09 fix.
+ */
+export function useEarnings() {
+  const queryClient = useQueryClient();
 
-export function useEarnings(): EarningsState {
-  const [summary, setSummary] = useState<EarningsSummary | null>(null);
-  const [liquidations, setLiquidations] = useState<Liquidation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const isFirstLoad = useRef(true);
-
-  const fetchData = useCallback(async (isRefresh: boolean) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-    setError(null);
-
-    try {
-      /**
-       * BUG-09 NOTE: Both endpoints require ADMIN role.
-       * COURIER role will receive 403 — handled gracefully via allSettled.
-       */
-      const [summaryResult, liquidationsResult] = await Promise.allSettled([
-        earningsApi.getSummary(),
-        earningsApi.getLiquidations(),
-      ]);
-
-      if (summaryResult.status === 'fulfilled') {
-        setSummary(summaryResult.value);
-      }
-      if (liquidationsResult.status === 'fulfilled') {
-        setLiquidations(liquidationsResult.value);
-      }
-
-      // Only show error if both failed
-      if (
-        summaryResult.status === 'rejected' &&
-        liquidationsResult.status === 'rejected'
-      ) {
-        const err = summaryResult.reason as { userMessage?: string };
-        setError(err?.userMessage ?? 'Error al cargar ganancias');
-      }
-    } catch (err: any) {
-      setError(err?.userMessage ?? 'Error al cargar ganancias');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-      isFirstLoad.current = false;
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchData(false);
-  }, [fetchData]);
+  const query = useQuery({
+    queryKey: ['courier-earnings'],
+    queryFn: () => earningsApi.getSummary(),
+    staleTime: 60_000,
+  });
 
   const refresh = useCallback(() => {
-    fetchData(true);
-  }, [fetchData]);
+    queryClient.invalidateQueries({ queryKey: ['courier-earnings'] });
+  }, [queryClient]);
 
-  return { summary, liquidations, loading, refreshing, error, refresh };
+  return {
+    summary: query.data ?? null,
+    liquidations: query.data?.settlements ?? [],
+    loading: query.isLoading,
+    refreshing: query.isFetching && !query.isLoading,
+    error: query.isError
+      ? (query.error as any)?.userMessage ?? 'Error al cargar ganancias'
+      : null,
+    refresh,
+  };
 }

@@ -30,7 +30,6 @@ const MENU_OPTIONS: { key: FilterTab; label: string; icon: string }[] = [
   { key: 'completed', label: 'Completados', icon: '✅' },
   { key: 'history', label: 'Historial', icon: '📋' },
 ];
-
 const TAB_STATUSES: Record<FilterTab, ServiceStatus[]> = {
   assigned: ['ASSIGNED'],
   accepted: ['ACCEPTED'],
@@ -77,6 +76,11 @@ export function ServicesScreen() {
   }
 
   function selectMenuOption(key: FilterTab) {
+    if (key === 'history') {
+      setMenuVisible(false);
+      navigation.navigate('ServiceHistory');
+      return;
+    }
     setActiveTab(key);
     setMenuVisible(false);
   }

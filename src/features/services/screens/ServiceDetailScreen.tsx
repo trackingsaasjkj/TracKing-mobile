@@ -11,7 +11,6 @@ import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { StatusBadge } from '../components/StatusBadge';
 import { useServiceDetail, canTransition, nextStatus } from '../hooks/useServices';
-import { useServicesStore } from '../store/servicesStore';
 import { useTrackingCoords } from '@/features/tracking/hooks/useLocation';
 import { EvidenceCapture } from '@/features/evidence/components/EvidenceCapture';
 import { CourierServiceMap } from '../components/CourierServiceMap';
@@ -41,9 +40,15 @@ export function ServiceDetailScreen() {
   const route = useRoute<Route>();
   const { serviceId } = route.params;
   const { colors } = useTheme();
-  const { performAction, actionLoading, performPaymentAction, paymentLoading } = useServiceDetail();
-  const service = useServicesStore((s) => s.services.find((x) => x.id === serviceId));
-  const servicesLoaded = useServicesStore((s) => s.services.length > 0 || s.loaded);
+  const {
+    service,
+    isLoading: detailLoading,
+    isError: detailError,
+    performAction,
+    actionLoading,
+    performPaymentAction,
+    paymentLoading,
+  } = useServiceDetail(serviceId);
 
   const [localError, setLocalError] = useState<string | null>(null);
   const [evidenceUploaded, setEvidenceUploaded] = useState(false);
@@ -51,7 +56,7 @@ export function ServiceDetailScreen() {
 
   const { latitude, longitude, permissionDenied } = useTrackingCoords();
 
-  if (!servicesLoaded) {
+  if (detailLoading) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -61,7 +66,7 @@ export function ServiceDetailScreen() {
     );
   }
 
-  if (!service) {
+  if (detailError || !service) {
     return (
       <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
         <Text style={[styles.notFound, { color: colors.neutral400 }]}>Servicio no encontrado</Text>

@@ -31,7 +31,7 @@ export function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
-      <Header name={user?.name ?? ''} status={user?.operationalStatus ?? 'UNAVAILABLE'} />
+      <Header name={user?.name ?? ''} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         refreshControl={

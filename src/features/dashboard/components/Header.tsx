@@ -1,22 +1,67 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+} from 'react-native';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
-import { spacing } from '@/shared/ui/spacing';
-import type { OperationalStatus } from '@/features/auth/types/auth.types';
+import { spacing, borderRadius } from '@/shared/ui/spacing';
+import { useAuthStore } from '@/features/auth/store/authStore';
+import { useWorkday } from '@/features/workday/hooks/useWorkday';
+import { useServicesStore } from '@/features/services/store/servicesStore';
 
 interface HeaderProps {
   name: string;
-  status: OperationalStatus;
 }
 
 function getFormattedDate(): string {
   return new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'long' });
 }
 
-export function Header({ name, status }: HeaderProps) {
+export function Header({ name }: HeaderProps) {
   const { colors } = useTheme();
-  const isOnline = status === 'AVAILABLE';
+  const user = useAuthStore((s) => s.user);
+  const services = useServicesStore((s) => s.services);
+  const { loading, startWorkday, endWorkday } = useWorkday();
+
+  const isAvailable = user?.operationalStatus === 'AVAILABLE';
+  const activeCount = services.filter(
+    (s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT',
+  ).length;
+
+  const handleStart = async () => {
+    const result = await startWorkday();
+    if (!result.ok) Alert.alert('Error', result.error);
+  };
+
+  const handleEnd = async () => {
+    if (activeCount > 0) {
+      Alert.alert(
+        'Servicios activos',
+        `Tienes ${activeCount} servicio(s) activo(s). Finalízalos antes de cerrar la jornada.`,
+      );
+      return;
+    }
+    Alert.alert(
+      'Finalizar jornada',
+      '¿Estás seguro de que quieres finalizar tu jornada?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Finalizar',
+          style: 'destructive',
+          onPress: async () => {
+            const result = await endWorkday();
+            if (!result.ok) Alert.alert('Error', result.error);
+          },
+        },
+      ],
+    );
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -25,24 +70,26 @@ export function Header({ name, status }: HeaderProps) {
         <Text style={[styles.date, { color: colors.neutral500 }]}>Hoy, {getFormattedDate()}</Text>
       </View>
 
-      <View style={styles.right}>
-        <TouchableOpacity style={[styles.notifBtn, { backgroundColor: colors.neutral100 }]} activeOpacity={0.7}>
-          <Text style={styles.notifIcon}>🔔</Text>
-          <View style={[styles.notifDot, { backgroundColor: colors.danger, borderColor: colors.white }]} />
-        </TouchableOpacity>
-        <View
-          style={[
-            styles.avatar,
-            isOnline
-              ? { backgroundColor: colors.primaryBg, borderColor: colors.primary }
-              : { backgroundColor: colors.neutral100, borderColor: colors.neutral200 },
-          ]}
-        >
-          <Text style={[styles.avatarText, { color: colors.primary }]}>
-            {name.charAt(0).toUpperCase()}
+      <TouchableOpacity
+        style={[
+          styles.workdayBtn,
+          {
+            backgroundColor: isAvailable ? colors.danger : colors.success,
+            opacity: loading || (!isAvailable === false && activeCount > 0) ? 0.6 : 1,
+          },
+        ]}
+        onPress={isAvailable ? handleEnd : handleStart}
+        disabled={loading || (isAvailable && activeCount > 0)}
+        activeOpacity={0.85}
+      >
+        {loading ? (
+          <ActivityIndicator color={colors.white} size="small" />
+        ) : (
+          <Text style={[styles.workdayBtnText, { color: colors.white }]}>
+            {isAvailable ? 'Terminar\njornada' : 'Iniciar\njornada'}
           </Text>
-        </View>
-      </View>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
@@ -58,19 +105,18 @@ const styles = StyleSheet.create({
   left: { flex: 1 },
   greeting: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold },
   date: { fontSize: fontSize.sm, marginTop: 2 },
-  right: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  notifBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
+  workdayBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 90,
   },
-  notifIcon: { fontSize: 18 },
-  notifDot: {
-    position: 'absolute', top: 6, right: 6,
-    width: 8, height: 8, borderRadius: 4, borderWidth: 1.5,
+  workdayBtnText: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    textAlign: 'center',
+    lineHeight: 16,
   },
-  avatar: {
-    width: 42, height: 42, borderRadius: 21,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 2,
-  },
-  avatarText: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
 });

@@ -17,9 +17,6 @@ interface DashboardState {
 
 const DEFAULT_KPIS: KPISummary = { pending: 0, inTransit: 0, completed: 0, earnings: 0 };
 
-function sumLiquidations(liquidations: Array<{ total_earned: number }>): number {
-  return liquidations.reduce((acc, l) => acc + (l.total_earned ?? 0), 0);
-}
 
 export function useDashboard(): DashboardState {
   const setOperationalStatus = useAuthStore((s) => s.setOperationalStatus);
@@ -49,13 +46,13 @@ export function useDashboard(): DashboardState {
 
         const computed = dashboardApi.computeKPIs(svcs);
 
-        // Earnings from liquidations — 403 is expected for COURIER role
+        // Earnings summary — 403 is expected for some roles
         let earnings = 0;
         try {
-          const liquidations = await earningsApi.getLiquidations();
-          earnings = sumLiquidations(liquidations);
+          const summary = await earningsApi.getSummary();
+          earnings = summary.total_earned;
         } catch {
-          // silently ignored — COURIER role gets 403
+          // silently ignored — role may not have access
         }
 
         setKpis({ ...computed, earnings });

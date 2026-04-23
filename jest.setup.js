@@ -31,6 +31,22 @@ jest.mock('@react-native-community/netinfo', () => ({
   fetch: jest.fn(() => Promise.resolve({ isConnected: true })),
 }));
 
+// Mock @react-native-firebase/messaging (native module)
+jest.mock('@react-native-firebase/messaging', () => {
+  const messagingInstance = {
+    requestPermission: jest.fn(),
+    getToken: jest.fn(),
+    onTokenRefresh: jest.fn(() => jest.fn()),
+    onMessage: jest.fn(() => jest.fn()),
+    onNotificationOpenedApp: jest.fn(),
+    getInitialNotification: jest.fn(),
+    setBackgroundMessageHandler: jest.fn(),
+  };
+  const messaging = jest.fn(() => messagingInstance);
+  messaging.AuthorizationStatus = { AUTHORIZED: 1, PROVISIONAL: 2, DENIED: -1, NOT_DETERMINED: 0 };
+  return messaging;
+});
+
 // Mock react-native-safe-area-context
 jest.mock('react-native-safe-area-context', () => {
   const { View } = require('react-native');

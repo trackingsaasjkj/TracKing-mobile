@@ -22,7 +22,13 @@ jest.mock('@/features/dashboard/api/dashboardApi', () => {
     },
   };
 });
-jest.mock('@/features/earnings/api/earningsApi');
+jest.mock('@/features/earnings/api/earningsApi', () => ({
+  earningsApi: {
+    getSummary: jest.fn(),
+    getSettlements: jest.fn(),
+    getSettlementById: jest.fn(),
+  },
+}));
 jest.mock('@/core/storage/secureStorage', () => ({
   secureStorage: { setToken: jest.fn(), clearToken: jest.fn(), getToken: jest.fn() },
 }));
@@ -65,7 +71,7 @@ function setupMocks(
 ) {
   (dashboardApi.getProfile as jest.Mock).mockResolvedValue(makeProfile(operational_status));
   (dashboardApi.getAssignedServices as jest.Mock).mockResolvedValue(services);
-  (earningsApi.getLiquidations as jest.Mock).mockResolvedValue([]);
+  (earningsApi.getSummary as jest.Mock).mockResolvedValue({ total_earned: 0, total_settlements: 0, total_services: 0, settlements: [] });
 }
 
 // ─── Carga inicial ────────────────────────────────────────────────────────────
@@ -89,7 +95,7 @@ describe('useDashboard — carga inicial', () => {
   it('establece error cuando la API falla', async () => {
     (dashboardApi.getProfile as jest.Mock).mockRejectedValue({ userMessage: 'Sin conexión' });
     (dashboardApi.getAssignedServices as jest.Mock).mockRejectedValue({ userMessage: 'Sin conexión' });
-    (earningsApi.getLiquidations as jest.Mock).mockRejectedValue({});
+    (earningsApi.getSummary as jest.Mock).mockRejectedValue({});
     const { result } = renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe('Sin conexión');

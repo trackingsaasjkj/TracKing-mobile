@@ -7,6 +7,7 @@ import { NetworkBanner } from '@/shared/components/NetworkBanner';
 import { useThemeStore } from '@/shared/ui/theme.store';
 import { lightNavigationTheme, darkNavigationTheme } from '@/shared/ui/navigationTheme';
 import { useMapDefaultsStore } from '@/shared/utils/mapDefaults';
+import { useFCM } from '@/core/notifications/useFCM';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,6 +25,9 @@ export function AppProviders({ children }: AppProvidersProps) {
   const isDark = useThemeStore((s) => s.isDark);
   const themeColors = useThemeStore((s) => s.colors);
   const hydrateMapDefaults = useMapDefaultsStore((s) => s.hydrate);
+
+  // Inicializa FCM: permisos, token, listeners
+  useFCM();
 
   useEffect(() => {
     hydrate();

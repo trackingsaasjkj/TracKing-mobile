@@ -1,20 +1,20 @@
 export const colors = {
-  // Brand
-  primary: '#2563EB',
-  primaryLight: '#3B82F6',
-  primaryDark: '#1D4ED8',
-  primaryBg: '#EFF6FF',
+  // Brand — verde TracKing (alineado con frontend)
+  primary: '#1A6B3C',
+  primaryLight: '#4CAF7D',
+  primaryDark: '#145530',
+  primaryBg: '#E8F5EE',
 
   // Semantic states
   success: '#22C55E',
   successBg: '#DCFCE7',
   successText: '#15803D',
 
-  warning: '#F59E0B',
+  warning: '#F6AD55',
   warningBg: '#FEF3C7',
   warningText: '#92400E',
 
-  danger: '#EF4444',
+  danger: '#E53E3E',
   dangerBg: '#FEE2E2',
   dangerText: '#B91C1C',
 
@@ -38,10 +38,9 @@ export const colors = {
   transparent: 'transparent',
 
   // Background & surfaces
-  background: '#F4F6FA',
-  surface: '#FFFFFF',       // cards, headers, tab bar, modales
-  surfaceRaised: '#FFFFFF', // cards elevadas (mismo en light)
+  background: '#F9FAFB',
+  surface: '#FFFFFF',
+  surfaceRaised: '#FFFFFF',
 } as const;
 
 export type ColorKey = keyof typeof colors;
-

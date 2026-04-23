@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ActivityIndicator,
+  View, Text, Image, TouchableOpacity, ActivityIndicator,
   StyleSheet, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -39,8 +39,9 @@ export function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
             <View style={[styles.heroIllustration, { backgroundColor: colors.primaryBg, shadowColor: colors.black }, shadows.md]}>
-              <Text style={styles.heroIcon}>🏍️</Text>
+              <Image source={require('../../../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
             </View>
+            <Text style={[styles.brandName, { color: colors.primary }]}>TracKing</Text>
           </View>
 
           <Text style={[styles.title, { color: colors.neutral900 }]}>Bienvenido, Mensajero</Text>
@@ -126,7 +127,9 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scroll: { flexGrow: 1, paddingHorizontal: spacing.xxl, paddingBottom: spacing.xxxl },
   hero: { alignItems: 'center', paddingTop: spacing.xxl, paddingBottom: spacing.xl, marginBottom: spacing.md },
-  heroIllustration: { width: 120, height: 120, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
+  heroIllustration: { width: 100, height: 100, borderRadius: borderRadius.full, alignItems: 'center', justifyContent: 'center' },
+  logoImage: { width: 64, height: 64 },
+  brandName: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold, marginTop: spacing.md, letterSpacing: -0.5 },
   heroIcon: { fontSize: 52 },
   title: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold, textAlign: 'center', marginBottom: spacing.sm },
   subtitle: { fontSize: fontSize.md, textAlign: 'center', lineHeight: fontSize.md * 1.5, marginBottom: spacing.xxxl },

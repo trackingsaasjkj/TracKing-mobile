@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 const DEFAULT_SHADOW_COLOR = '#000';
-const DEFAULT_PRIMARY_COLOR = '#2563EB';
+const DEFAULT_PRIMARY_COLOR = '#1A6B3C';
 
 /** Cross-platform shadow presets.
  *  On iOS, pass `shadowColor` inline to override the default neutral shadow color:

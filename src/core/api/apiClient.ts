@@ -2,11 +2,10 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { handleApiError } from '@/shared/utils/errorHandler';
 
 /**
- * En desarrollo con Expo Go en dispositivo físico, 'localhost' apunta al propio
- * celular, no a la PC. Se usa la IP local de la máquina de desarrollo.
- * Si cambias de red, actualiza esta IP con la nueva dirección de tu PC.
+ * Backend en la nube (rama apk).
+ * Esta URL apunta al servidor de producción desplegado en Render.
  */
-const BASE_URL = 'http://192.168.1.25:3000';
+const BASE_URL = 'https://tracking-backend-tald.onrender.com';
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {

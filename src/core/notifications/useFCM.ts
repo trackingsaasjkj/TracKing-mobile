@@ -84,7 +84,7 @@ export function useFCM() {
 
 async function registerTokenInBackend(token: string): Promise<void> {
   try {
-    await apiClient.post('/notifications/fcm-token', { token });
+    await apiClient.post('/api/notifications/fcm-token', { token });
     console.log('[FCM] Token registrado en backend');
   } catch (error) {
     console.error('[FCM] Error registrando token en backend:', error);

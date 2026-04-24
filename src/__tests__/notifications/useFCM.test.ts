@@ -78,7 +78,7 @@ describe('useFCM — autenticado, permiso concedido', () => {
     renderHook(() => useFCM());
     await act(async () => {});
     expect(mockGetToken).toHaveBeenCalledTimes(1);
-    expect(mockApiPost).toHaveBeenCalledWith('/notifications/fcm-token', { token: 'fcm-token-xyz' });
+    expect(mockApiPost).toHaveBeenCalledWith('/api/notifications/fcm-token', { token: 'fcm-token-xyz' });
   });
 
   it('registra listeners de foreground y token refresh', async () => {

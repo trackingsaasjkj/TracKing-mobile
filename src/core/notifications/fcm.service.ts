@@ -1,5 +1,4 @@
 import messaging, { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
-import { Platform } from 'react-native';
 
 /**
  * Solicita permiso de notificaciones al usuario (requerido en iOS y Android 13+).
@@ -73,5 +72,28 @@ export function setBackgroundMessageHandler(): void {
   messaging().setBackgroundMessageHandler(async (remoteMessage) => {
     console.log('[FCM] Mensaje en background:', remoteMessage);
     // Aquí puedes guardar datos localmente si necesitas procesarlos
+  });
+}
+
+/**
+ * Listener para notificaciones de actualización de servicio recibidas en FOREGROUND.
+ * Filtra mensajes con data.type === 'SERVICE_UPDATE' y parsea el payload del servicio.
+ * Retorna una función para desuscribirse.
+ *
+ * El backend envía el servicio completo en data.payload para evitar un fetch adicional.
+ */
+export function onServiceUpdateMessage(
+  callback: (service: import('@/features/services/types/services.types').Service) => void,
+): () => void {
+  return onForegroundMessage((message) => {
+    if (message.data?.type !== 'SERVICE_UPDATE') return;
+    const raw = message.data?.payload;
+    if (!raw || typeof raw !== 'string') return;
+    try {
+      const service = JSON.parse(raw) as import('@/features/services/types/services.types').Service;
+      callback(service);
+    } catch {
+      console.warn('[FCM] Failed to parse SERVICE_UPDATE payload');
+    }
   });
 }

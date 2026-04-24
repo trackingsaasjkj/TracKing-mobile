@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { servicesApi } from '../api/servicesApi';
 import { useServicesStore } from '../store/servicesStore';
+import { useAutoRefresh } from '@/core/hooks/useAutoRefresh';
+import { useServiceUpdates } from './useServiceUpdates';
 import type { Service, ServiceStatus } from '../types/services.types';
 
 const NEXT_STATUS: Partial<Record<ServiceStatus, ServiceStatus>> = {
@@ -41,6 +43,12 @@ export function useServices() {
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['courier-services'] });
   }, [queryClient]);
+
+  // Layer 1: WebSocket + FCM real-time updates (< 50ms)
+  useServiceUpdates();
+
+  // Layer 2: Polling fallback every 45s (covers WS downtime)
+  useAutoRefresh(refresh, { foregroundInterval: 45_000 });
 
   const performAction = useCallback(
     async (service: Service): Promise<{ ok: boolean; error?: string }> => {

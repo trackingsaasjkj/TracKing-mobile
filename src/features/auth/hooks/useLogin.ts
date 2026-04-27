@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { authApi } from '../api/authApi';
+import { dashboardApi } from '@/features/dashboard/api/dashboardApi';
 import { useAuthStore } from '../store/authStore';
 import type { CourierUser } from '../types/auth.types';
 
@@ -54,6 +55,15 @@ export function useLogin(): UseLoginResult {
 
       // accessToken is returned in the body AND set as httpOnly cookie
       setSession(user, userData.accessToken ?? '');
+
+      // Fetch real operational status — login response doesn't include it
+      try {
+        const profile = await dashboardApi.getProfile();
+        user.operationalStatus = profile.operational_status;
+        setSession(user, userData.accessToken ?? '');
+      } catch {
+        // Non-critical: useDashboard will sync it on mount
+      }
     } catch (err: unknown) {
       const apiErr = err as { response?: { status?: number }; userMessage?: string };
       const status = apiErr?.response?.status;

@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import {
   View, Text, FlatList, StyleSheet, RefreshControl,
-  ActivityIndicator,
+  ActivityIndicator, TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -48,6 +48,10 @@ export function ServiceHistoryScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: colors.surface }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backBtn}>
+          <Text style={[styles.backIcon, { color: colors.primary }]}>‹</Text>
+          <Text style={[styles.backText, { color: colors.primary }]}>Pedidos</Text>
+        </TouchableOpacity>
         <Text style={[styles.title, { color: colors.neutral900 }]}>Historial</Text>
         {total > 0 && (
           <View style={[styles.countBadge, { backgroundColor: colors.primaryBg }]}>
@@ -105,6 +109,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 2, minWidth: 70 },
+  backIcon: { fontSize: 28, lineHeight: 30, marginTop: -2 },
+  backText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   title: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   countBadge: {
     borderRadius: 99,

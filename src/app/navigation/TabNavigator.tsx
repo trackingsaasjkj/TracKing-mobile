@@ -50,10 +50,10 @@ export function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home"     component={HomeScreen}        options={{ title: 'Home' }} />
-      <Tab.Screen name="Orders"   component={ServicesNavigator} options={{ title: 'Orders', headerShown: false }} />
+      <Tab.Screen name="Home"     component={HomeScreen}        options={{ title: 'Inicio' }} />
+      <Tab.Screen name="Orders"   component={ServicesNavigator} options={{ title: 'Servicios', headerShown: false }} />
       <Tab.Screen name="Tracking" component={TrackingScreen}    options={{ title: 'Mapa' }} />
-      <Tab.Screen name="Earnings" component={EarningsScreen}    options={{ title: 'Earnings' }} />
+      <Tab.Screen name="Earnings" component={EarningsScreen}    options={{ title: 'Reportes' }} />
       <Tab.Screen name="Config"   component={WorkdayScreen}     options={{ title: 'Config' }} />
     </Tab.Navigator>
   );

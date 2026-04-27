@@ -41,8 +41,7 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "@react-native-firebase/app",
-      "@react-native-firebase/messaging",
+      "expo-secure-store",
       "expo-secure-store",
       [
         "expo-location",

@@ -67,20 +67,6 @@ export function ActiveServiceCard({ service, onPress, onNavigate }: ActiveServic
             </Text>
           </View>
         </View>
-
-        <View style={styles.actions}>
-          <TouchableOpacity style={[styles.callBtn, { backgroundColor: colors.neutral100 }]} activeOpacity={0.7}>
-            <Text style={styles.callIcon}>📞</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.navigateBtn, { backgroundColor: colors.primary }]}
-            onPress={onNavigate}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.navigateIcon}>🗺</Text>
-            <Text style={[styles.navigateText, { color: colors.white }]}>Navegar</Text>
-          </TouchableOpacity>
-        </View>
       </View>
     </TouchableOpacity>
   );

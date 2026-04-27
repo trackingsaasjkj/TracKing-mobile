@@ -1,9 +1,9 @@
 export const darkColors = {
-  // Brand — verde TracKing dark mode
-  primary:      '#4CAF7D', // verde claro vibrante para dark
-  primaryLight: '#A8E6C3', // accent verde pastel
-  primaryDark:  '#1A6B3C', // verde profundo
-  primaryBg:    '#0D2B1A', // fondo verde oscuro para tarjetas
+  // Brand — azul TracKing dark mode
+  primary:      '#60A5FA',  // blue-400 — frontend primary.light, vibrante en dark
+  primaryLight: '#93C5FD',  // blue-300 — frontend accent
+  primaryDark:  '#1D4ED8',  // blue-700
+  primaryBg:    '#0D1B3E',  // fondo azul oscuro para tarjetas
 
   // Semantic states
   success:      '#22C55E',
@@ -37,10 +37,10 @@ export const darkColors = {
   black:        '#000000',
   transparent:  'transparent',
 
-  // Background & surfaces
-  background:   '#0B121E',
-  surface:      '#131F2E',
-  surfaceRaised: '#1A2840',
+  // Background & surfaces — frontend dark: neutral-950
+  background:   '#0A0F1E',
+  surface:      '#111827',
+  surfaceRaised: '#1A2235',
 } as const;
 
 export type DarkColorKey = keyof typeof darkColors;

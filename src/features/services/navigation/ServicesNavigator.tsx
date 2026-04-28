@@ -30,7 +30,7 @@ export function ServicesNavigator() {
       <Stack.Screen
         name="ServiceDetail"
         component={ServiceDetailScreen}
-        options={{ title: 'Detalle del servicio' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ServiceHistory"

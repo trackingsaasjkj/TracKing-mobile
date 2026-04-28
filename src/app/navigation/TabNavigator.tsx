@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@/shared/ui/useTheme';
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
 import { ServicesNavigator } from '@/features/services/navigation/ServicesNavigator';
@@ -29,6 +31,20 @@ const TAB_ICONS: Record<keyof MainTabParamList, { active: string; inactive: stri
 
 export function TabNavigator() {
   const { colors } = useTheme();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e) => {
+      const route = e.target?.split('-')[0];
+      // Reset Orders stack when pressing Orders tab
+      if (route === 'Orders') {
+        navigation.navigate('Orders', {
+          screen: 'ServicesList',
+        } as any);
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   return (
     <Tab.Navigator

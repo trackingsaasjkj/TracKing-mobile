@@ -50,8 +50,12 @@ export function HomeScreen() {
           <View style={styles.activeSection}>
             <ActiveServiceCard
               service={activeService}
-              onPress={() => navigation.navigate('Orders')}
-              onNavigate={() => navigation.navigate('Orders')}
+              onViewDetails={(serviceId) =>
+                navigation.navigate('Orders', {
+                  screen: 'ServiceDetail',
+                  params: { serviceId },
+                })
+              }
             />
           </View>
         ) : (

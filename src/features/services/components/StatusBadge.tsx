@@ -8,10 +8,12 @@ import type { BadgeVariant } from '@/shared/ui/components/StatusBadge';
 import type { ServiceStatus } from '../types/services.types';
 
 const STATUS_CONFIG: Record<ServiceStatus, { label: string; variant: BadgeVariant }> = {
-  ASSIGNED: { label: 'Pendiente', variant: 'warning' },
+  PENDING: { label: 'Pendiente', variant: 'warning' },
+  ASSIGNED: { label: 'Asignado', variant: 'warning' },
   ACCEPTED: { label: 'Aceptado', variant: 'primary' },
   IN_TRANSIT: { label: 'En Ruta', variant: 'info' },
   DELIVERED: { label: 'Entregado', variant: 'success' },
+  CANCELLED: { label: 'Cancelado', variant: 'danger' },
 };
 
 export function StatusBadge({ status }: { status: ServiceStatus }) {

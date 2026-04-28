@@ -73,7 +73,7 @@ export function useDashboard(): DashboardState {
   const refresh = useCallback(() => fetchData(true), [fetchData]);
 
   const activeService =
-    services.find((s) => s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT') ?? null;
+    services.find((s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT') ?? null;
 
   return { kpis, activeService, loading, refreshing, error, refresh };
 }

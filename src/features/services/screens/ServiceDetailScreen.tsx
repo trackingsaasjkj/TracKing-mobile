@@ -4,7 +4,7 @@ import {
   ActivityIndicator, Alert, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
@@ -38,6 +38,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
 
 export function ServiceDetailScreen() {
   const route = useRoute<Route>();
+  const navigation = useNavigation();
   const { serviceId } = route.params;
   const { colors } = useTheme();
   const {
@@ -101,6 +102,9 @@ export function ServiceDetailScreen() {
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.statusRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backBtnContainer}>
+            <Text style={[styles.backIcon, { color: colors.primary }]}>←</Text>
+          </TouchableOpacity>
           <StatusBadge status={service.status} />
         </View>
 
@@ -261,7 +265,9 @@ function PaymentModal({ visible, loading, currentStatus, totalPrice, onSelect, o
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: spacing.lg, paddingBottom: 100 },
-  statusRow: { marginBottom: spacing.lg },
+  statusRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  backBtnContainer: { padding: spacing.sm },
+  backIcon: { fontSize: 24, fontWeight: fontWeight.bold },
   section: { borderRadius: borderRadius.md, padding: spacing.md, marginBottom: spacing.md },
   sectionTitle: {
     fontSize: fontSize.xs, fontWeight: fontWeight.semibold,

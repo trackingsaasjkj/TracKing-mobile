@@ -1,25 +1,58 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
 import { StatusBadge } from '@/features/services/components/StatusBadge';
+import { useServices, nextStatus } from '@/features/services/hooks/useServices';
 import type { Service } from '@/features/services/types/services.types';
 
 interface ActiveServiceCardProps {
   service: Service;
   onPress?: () => void;
   onNavigate?: () => void;
+  onViewDetails?: (serviceId: string) => void;
 }
 
-export function ActiveServiceCard({ service, onPress, onNavigate }: ActiveServiceCardProps) {
+export function ActiveServiceCard({ service, onPress, onNavigate, onViewDetails }: ActiveServiceCardProps) {
   const { colors } = useTheme();
+  const { performAction, actionLoading } = useServices();
+  const [error, setError] = useState<string | null>(null);
+
+  const getButtonLabel = () => {
+    switch (service.status) {
+      case 'ASSIGNED':
+        return 'ACEPTAR';
+      case 'ACCEPTED':
+        return 'INICIAR RUTA';
+      case 'IN_TRANSIT':
+        return 'ENTREGAR';
+      default:
+        return null;
+    }
+  };
+
+  const handleCardPress = () => {
+    onViewDetails?.(service.id) || onPress?.();
+  };
+
+  const handleAction = async (e: any) => {
+    e.stopPropagation?.();
+    const result = await performAction(service);
+    if (!result.ok) {
+      setError(result.error ?? 'Error desconocido');
+      Alert.alert('Error', result.error ?? 'No se pudo actualizar el servicio');
+    }
+  };
+
+  const buttonLabel = getButtonLabel();
+  const isLoading = actionLoading === service.id;
 
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.primary, shadowColor: colors.black }, shadows.md]}
-      onPress={onPress}
+      onPress={handleCardPress}
       activeOpacity={0.9}
     >
       <View style={styles.topRow}>
@@ -67,20 +100,22 @@ export function ActiveServiceCard({ service, onPress, onNavigate }: ActiveServic
             </Text>
           </View>
         </View>
-
-        <View style={styles.actions}>
-          <TouchableOpacity style={[styles.callBtn, { backgroundColor: colors.neutral100 }]} activeOpacity={0.7}>
-            <Text style={styles.callIcon}>📞</Text>
-          </TouchableOpacity>
+        {buttonLabel && (
           <TouchableOpacity
-            style={[styles.navigateBtn, { backgroundColor: colors.primary }]}
-            onPress={onNavigate}
-            activeOpacity={0.85}
+            style={[styles.actionBtn, { backgroundColor: colors.primary }]}
+            onPress={handleAction}
+            disabled={isLoading}
+            activeOpacity={0.8}
           >
-            <Text style={styles.navigateIcon}>🗺</Text>
-            <Text style={[styles.navigateText, { color: colors.white }]}>Navegar</Text>
+            {isLoading ? (
+              <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+              <Text style={[styles.actionBtnText, { color: colors.white }]}>
+                {buttonLabel}
+              </Text>
+            )}
           </TouchableOpacity>
-        </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -104,12 +139,21 @@ const styles = StyleSheet.create({
   routeLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, letterSpacing: 0.5, marginBottom: 2 },
   routeAddress: { fontSize: fontSize.sm },
   routeAddressBold: { fontSize: fontSize.md, fontWeight: fontWeight.semibold },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: spacing.md },
   clientRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1 },
   clientAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   clientInitial: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
   clientName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   clientSub: { fontSize: fontSize.xs },
+  actionBtn: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 100,
+  },
+  actionBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   callBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   callIcon: { fontSize: 18 },

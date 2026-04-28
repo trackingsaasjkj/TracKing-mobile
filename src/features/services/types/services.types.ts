@@ -1,4 +1,4 @@
-export type ServiceStatus = 'ASSIGNED' | 'ACCEPTED' | 'IN_TRANSIT' | 'DELIVERED';
+export type ServiceStatus = 'PENDING' | 'ASSIGNED' | 'ACCEPTED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
 export type PaymentMethod = 'CASH' | 'TRANSFER' | 'CREDIT';
 export type PaymentStatus = 'PAID' | 'UNPAID';
 

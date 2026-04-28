@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { useTheme } from '@/shared/ui/useTheme';
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
 import { ServicesNavigator } from '@/features/services/navigation/ServicesNavigator';
@@ -29,6 +31,20 @@ const TAB_ICONS: Record<keyof MainTabParamList, { active: string; inactive: stri
 
 export function TabNavigator() {
   const { colors } = useTheme();
+  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('tabPress', (e) => {
+      const route = e.target?.split('-')[0];
+      // Reset Orders stack when pressing Orders tab
+      if (route === 'Orders') {
+        navigation.navigate('Orders', {
+          screen: 'ServicesList',
+        } as any);
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   return (
     <Tab.Navigator
@@ -50,10 +66,10 @@ export function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home"     component={HomeScreen}        options={{ title: 'Home' }} />
-      <Tab.Screen name="Orders"   component={ServicesNavigator} options={{ title: 'Orders', headerShown: false }} />
+      <Tab.Screen name="Home"     component={HomeScreen}        options={{ title: 'Inicio' }} />
+      <Tab.Screen name="Orders"   component={ServicesNavigator} options={{ title: 'Servicios', headerShown: false }} />
       <Tab.Screen name="Tracking" component={TrackingScreen}    options={{ title: 'Mapa' }} />
-      <Tab.Screen name="Earnings" component={EarningsScreen}    options={{ title: 'Earnings' }} />
+      <Tab.Screen name="Earnings" component={EarningsScreen}    options={{ title: 'Reportes' }} />
       <Tab.Screen name="Config"   component={WorkdayScreen}     options={{ title: 'Config' }} />
     </Tab.Navigator>
   );

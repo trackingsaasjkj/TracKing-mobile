@@ -36,21 +36,25 @@ export function Header({ name }: HeaderProps) {
   const services = useServicesStore((s) => s.services);
   const { loading, startWorkday, endWorkday } = useWorkday();
 
-  const isAvailable = user?.operationalStatus === 'AVAILABLE';
+  const operationalStatus = user?.operationalStatus;
+  const isAvailable = operationalStatus === 'AVAILABLE';
+  const isInService = operationalStatus === 'IN_SERVICE';
+  // Toggle is ON whenever the courier is active (AVAILABLE or IN_SERVICE)
+  const isOn = isAvailable || isInService;
   const activeCount = services.filter(
     (s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT',
   ).length;
 
   // Animate thumb position: 0 = OFF (left), 1 = ON (right)
-  const anim = useRef(new Animated.Value(isAvailable ? 1 : 0)).current;
+  const anim = useRef(new Animated.Value(isOn ? 1 : 0)).current;
 
   useEffect(() => {
     Animated.spring(anim, {
-      toValue: isAvailable ? 1 : 0,
+      toValue: isOn ? 1 : 0,
       useNativeDriver: false,
       bounciness: 6,
     }).start();
-  }, [isAvailable]);
+  }, [isOn]);
 
   const thumbLeft = anim.interpolate({
     inputRange: [0, 1],
@@ -58,7 +62,7 @@ export function Header({ name }: HeaderProps) {
   });
 
   const handlePress = async () => {
-    if (isAvailable) {
+    if (isOn) {
       if (activeCount > 0) {
         Alert.alert(
           'Servicios activos',
@@ -87,8 +91,9 @@ export function Header({ name }: HeaderProps) {
     }
   };
 
-  const trackColor = isAvailable ? colors.success : colors.danger;
-  const isDisabled = loading || (isAvailable && activeCount > 0);
+  const trackColor = isOn ? colors.success : colors.danger;
+  // Only disable while a request is in flight
+  const isDisabled = loading;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.surface }]}>
@@ -114,11 +119,11 @@ export function Header({ name }: HeaderProps) {
               <Text
                 style={[
                   styles.label,
-                  isAvailable ? styles.labelLeft : styles.labelRight,
+                  isOn ? styles.labelLeft : styles.labelRight,
                   { color: colors.white },
                 ]}
               >
-                {isAvailable ? 'ON' : 'OFF'}
+                {isOn ? 'ON' : 'OFF'}
               </Text>
             )}
           </View>

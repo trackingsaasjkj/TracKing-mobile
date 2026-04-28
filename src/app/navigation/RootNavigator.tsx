@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSessionRestore } from '@/core/hooks/useSessionRestore';
+import { usePermissions } from '@/core/hooks/usePermissions';
 import { useTheme } from '@/shared/ui/useTheme';
 import { TabNavigator } from './TabNavigator';
 import { LoginScreen } from '@/features/auth/screens/LoginScreen';
@@ -18,6 +19,9 @@ export function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { isRestoring } = useSessionRestore();
   const { colors } = useTheme();
+  
+  // Request permissions on app start
+  usePermissions();
 
   if (isRestoring) {
     return (

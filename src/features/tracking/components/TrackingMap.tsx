@@ -5,7 +5,6 @@ import type WebViewType from 'react-native-webview';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
-import { MAPTILER_KEY } from '@/config/map';
 
 interface TrackingMapProps {
   active: boolean;
@@ -32,7 +31,6 @@ export function TrackingMap({ active, latitude, longitude, permissionDenied }: T
       initialCoords.current.lng,
       colors.primary,
       colors.white,
-      MAPTILER_KEY,
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCoords.current, colors.primary, colors.white]);
@@ -115,21 +113,16 @@ export function TrackingMap({ active, latitude, longitude, permissionDenied }: T
 }
 
 // ─── Leaflet HTML builder ────────────────────────────────────────────────────
-// Leaflet CSS/JS are inlined as data URIs via CDN on first load, then cached by
-// the WebView. The map listens for postMessage events to update the marker
-// position without a full page reload.
+// Leaflet CSS/JS loaded from CDN on first load, then cached by the WebView.
+// The map listens for postMessage events to update the marker position without
+// a full page reload, avoiding flicker on each 15s GPS update.
 //
-// Why Maptiler instead of OSM tiles directly:
-//   - OSM tile servers have usage policies that restrict commercial/high-volume apps
-//   - Maptiler provides a CDN-backed tile service with a generous free tier (100k tiles/mo)
-//     and predictable paid tiers for scale
-//   - Same OSM data, better reliability for production use
+// Uses OpenStreetMap tiles — free, no API key required, good CORS support in WebView.
 function buildLeafletHtml(
   lat: number,
   lng: number,
   primaryColor: string,
   borderColor: string,
-  maptilerKey: string,
 ): string {
   const markerHtml = `<div style="width:18px;height:18px;border-radius:50%;background:${primaryColor};border:3px solid ${borderColor};box-shadow:0 0 0 4px ${primaryColor}4D;"></div>`;
 
@@ -151,10 +144,12 @@ function buildLeafletHtml(
     var map = L.map('map', { zoomControl: true, attributionControl: false })
                .setView([${lat}, ${lng}], 16);
 
-    // Maptiler Streets tile layer — commercial-friendly, CDN-backed
     L.tileLayer(
-      'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${maptilerKey}',
-      { maxZoom: 19 }
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }
     ).addTo(map);
 
     var icon = L.divIcon({

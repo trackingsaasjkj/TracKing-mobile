@@ -102,41 +102,55 @@ describe('useDashboard — carga inicial', () => {
   });
 });
 
-// ─── activeService ────────────────────────────────────────────────────────────
+// ─── activeServices ───────────────────────────────────────────────────────────
 
-describe('useDashboard — activeService', () => {
+describe('useDashboard — activeServices', () => {
   beforeEach(() => {
     useServicesStore.setState({ services: [], loaded: false });
     useAuthStore.setState({ user: makeUser(), accessToken: 'tok', isAuthenticated: true });
     jest.clearAllMocks();
   });
 
-  it('detecta activeService con status ACCEPTED', async () => {
+  it('incluye servicios ACCEPTED en activeServices', async () => {
     setupMocks([makeService('s1', 'ASSIGNED'), makeService('s2', 'ACCEPTED')]);
     const { result } = renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.activeService?.id).toBe('s2');
+    expect(result.current.activeServices.map((s) => s.id)).toContain('s2');
   });
 
-  it('detecta activeService con status IN_TRANSIT', async () => {
+  it('incluye servicios IN_TRANSIT en activeServices', async () => {
     setupMocks([makeService('s1', 'IN_TRANSIT')]);
     const { result } = renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.activeService?.id).toBe('s1');
+    expect(result.current.activeServices.map((s) => s.id)).toContain('s1');
   });
 
-  it('activeService es null cuando todos son ASSIGNED o DELIVERED', async () => {
+  it('incluye servicios ASSIGNED en activeServices', async () => {
     setupMocks([makeService('s1', 'ASSIGNED'), makeService('s2', 'DELIVERED')]);
     const { result } = renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.activeService).toBeNull();
+    expect(result.current.activeServices.map((s) => s.id)).toContain('s1');
+    expect(result.current.activeServices.map((s) => s.id)).not.toContain('s2');
   });
 
-  it('activeService es null cuando no hay servicios', async () => {
+  it('activeServices está vacío cuando no hay servicios', async () => {
     setupMocks([]);
     const { result } = renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
-    expect(result.current.activeService).toBeNull();
+    expect(result.current.activeServices).toHaveLength(0);
+  });
+
+  it('muestra los tres estados a la vez', async () => {
+    setupMocks([
+      makeService('s1', 'ASSIGNED'),
+      makeService('s2', 'ACCEPTED'),
+      makeService('s3', 'IN_TRANSIT'),
+      makeService('s4', 'DELIVERED'),
+    ]);
+    const { result } = renderHook(() => useDashboard());
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.activeServices).toHaveLength(3);
+    expect(result.current.activeServices.map((s) => s.id)).not.toContain('s4');
   });
 });
 

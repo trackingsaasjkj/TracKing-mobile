@@ -14,6 +14,7 @@ import { useServiceDetail, canTransition, nextStatus } from '../hooks/useService
 import { useTrackingCoords } from '@/features/tracking/hooks/useLocation';
 import { EvidenceCapture } from '@/features/evidence/components/EvidenceCapture';
 import { CourierServiceMap } from '../components/CourierServiceMap';
+import { ContactsMenu } from '../components/ContactsMenu';
 import type { ServicesStackParamList } from '../navigation/ServicesNavigator';
 import type { PaymentStatus } from '../types/services.types';
 
@@ -126,6 +127,16 @@ export function ServiceDetailScreen() {
           <Row label="Origen" value={service.origin_address} colors={colors} />
           <Row label="Destino" value={service.destination_address} colors={colors} />
           <Row label="Destinatario" value={service.destination_name} colors={colors} />
+          {(service.origin_contact_phone || service.destination_contact_number) && (
+            <View style={styles.contactsRow}>
+              <Text style={[styles.contactsLabel, { color: colors.neutral500 }]}>Contactos</Text>
+              <ContactsMenu
+                customerPhone={service.origin_contact_phone}
+                recipientPhone={service.destination_contact_number}
+                recipientName={service.destination_name}
+              />
+            </View>
+          )}
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -288,6 +299,13 @@ const styles = StyleSheet.create({
   },
   rowLabel: { fontSize: fontSize.sm },
   rowValue: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, flex: 1, textAlign: 'right' },
+  contactsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.sm,
+  },
+  contactsLabel: { fontSize: fontSize.sm },
 });
 
 const modalStyles = StyleSheet.create({

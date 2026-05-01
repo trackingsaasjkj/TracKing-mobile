@@ -8,7 +8,7 @@ import type { Service } from '@/features/services/types/services.types';
 
 interface DashboardState {
   kpis: KPISummary;
-  activeService: Service | null;
+  activeServices: Service[];
   loading: boolean;
   refreshing: boolean;
   error: string | null;
@@ -72,8 +72,10 @@ export function useDashboard(): DashboardState {
 
   const refresh = useCallback(() => fetchData(true), [fetchData]);
 
-  const activeService =
-    services.find((s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT') ?? null;
+  // All services the courier needs to act on today
+  const activeServices = services.filter(
+    (s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT',
+  );
 
-  return { kpis, activeService, loading, refreshing, error, refresh };
+  return { kpis, activeServices, loading, refreshing, error, refresh };
 }

@@ -8,6 +8,10 @@ export interface Service {
   origin_address: string;
   destination_address: string;
   destination_name: string;
+  /** Phone number of the recipient (person receiving the package) */
+  destination_contact_number?: string;
+  /** Phone number of the customer who placed the order */
+  origin_contact_phone?: string;
   package_details: string;
   payment_method: PaymentMethod;
   payment_status: PaymentStatus;

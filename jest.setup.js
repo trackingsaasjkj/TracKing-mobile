@@ -44,6 +44,9 @@ jest.mock('@react-native-firebase/messaging', () => {
   };
   const messaging = jest.fn(() => messagingInstance);
   messaging.AuthorizationStatus = { AUTHORIZED: 1, PROVISIONAL: 2, DENIED: -1, NOT_DETERMINED: 0 };
+  // fcm.service.ts does: require('@react-native-firebase/messaging').default
+  // so we need to expose the mock as both the default export and the module itself
+  messaging.default = messaging;
   return messaging;
 });
 

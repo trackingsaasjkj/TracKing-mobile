@@ -3,6 +3,9 @@ import { secureStorage } from '@/core/storage/secureStorage';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
 import type { CourierUser } from '@/features/auth/types/auth.types';
+import * as ExpoLocation from 'expo-location';
+import { WORKDAY_BACKGROUND_TASK } from '@/features/tracking/tasks/workdayBackgroundTask';
+import { colors } from '@/shared/ui/colors';
 
 const RESTORE_TIMEOUT_MS = 8_000; // safety net: never block the app more than 8s
 
@@ -16,6 +19,41 @@ interface CourierMeResponse {
     name: string;
     email: string;
   };
+}
+
+/**
+ * Restarts the workday background location task if the courier is already
+ * AVAILABLE or IN_SERVICE when the app launches (e.g. after a force-close).
+ * The task may have been killed by the OS — this ensures it's always running
+ * during an active workday.
+ */
+async function restoreWorkdayTracking(): Promise<void> {
+  try {
+    const { status: fgStatus } = await ExpoLocation.getForegroundPermissionsAsync();
+    if (fgStatus !== 'granted') return;
+
+    const { status: bgStatus } = await ExpoLocation.getBackgroundPermissionsAsync();
+    if (bgStatus !== 'granted') return;
+
+    const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
+      WORKDAY_BACKGROUND_TASK,
+    ).catch(() => false);
+    if (isRunning) return; // already running — nothing to do
+
+    await ExpoLocation.startLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK, {
+      accuracy: ExpoLocation.Accuracy.Balanced,
+      timeInterval: 15_000,
+      distanceInterval: 10,
+      showsBackgroundLocationIndicator: true,
+      foregroundService: {
+        notificationTitle: 'Jornada activa',
+        notificationBody: 'Tu ubicación se comparte mientras estás en jornada.',
+        notificationColor: colors.primary,
+      },
+    });
+  } catch {
+    // expo-task-manager unavailable in Expo Go — silently ignore
+  }
 }
 
 export function useSessionRestore() {
@@ -52,6 +90,15 @@ export function useSessionRestore() {
         };
 
         setSession(user, token);
+
+        // If the courier is already in an active workday, ensure the background
+        // location task is running — it may have been killed by the OS.
+        if (
+          profile.operational_status === 'AVAILABLE' ||
+          profile.operational_status === 'IN_SERVICE'
+        ) {
+          await restoreWorkdayTracking();
+        }
       } catch {
         // Token invalid, expired, or network error — force re-login
         clearSession();

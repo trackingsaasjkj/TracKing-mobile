@@ -1980,3 +1980,322 @@ export type MainTabParamList = {
 ---
 
 *Actualización: 14 de abril de 2026 — Maptiler + TrackingScreen v2.0*
+
+---
+
+## Sesión 1 de Mayo de 2026 — Background Tracking, Permisos, OSM, Teléfono de Cliente
+
+### Contexto
+
+Se realizaron mejoras en cinco áreas: tracking de ubicación en segundo plano durante toda la jornada, solicitud automática de permisos al abrir la app, migración de tiles de mapa de Maptiler a OpenStreetMap, identidad visual del APK, y contacto telefónico del cliente en las cards de servicio.
+
+---
+
+### CAMBIO-61 — Background tracking durante toda la jornada (no solo IN_SERVICE)
+
+**Problema:** El task de ubicación en segundo plano (`tracking-background-location`) solo se iniciaba cuando el mensajero tenía un servicio `IN_SERVICE`. Si la app se cerraba mientras el mensajero estaba `AVAILABLE` (esperando servicios), no se enviaba ninguna ubicación al backend.
+
+**Causa raíz:** `useLocation` arrancaba el background task condicionado a `operationalStatus === 'IN_SERVICE'`, y ese hook vive en `TrackingScreen` (un tab). Si el tab no estaba montado o la app estaba en background, el intervalo de foreground moría.
+
+**Solución:** Se creó un segundo background task (`workday-background-location`) que corre durante toda la jornada laboral, independientemente de si hay un servicio activo:
+
+- `workdayBackgroundTask.ts` — define el task con `TaskManager.defineTask`. Envía ubicación cada 15s usando `sendFromBackground()` (lee JWT de SecureStore). Se detiene automáticamente si recibe 401 (sesión expirada).
+- `useWorkdayTracking.ts` — hook que encapsula `startLocationUpdatesAsync` / `stopLocationUpdatesAsync` para el task de jornada.
+- `useWorkday.ts` — ahora llama `startWorkdayTracking()` al iniciar jornada y `stopWorkdayTracking()` al terminarla.
+- `index.ts` — registra el nuevo task antes de que monte React.
+- `useSessionRestore.ts` — si el mensajero ya estaba en jornada (`AVAILABLE` o `IN_SERVICE`) cuando abre la app, llama `restoreWorkdayTracking()` para reiniciar el task si el OS lo mató.
+
+**Notificación persistente (Android):**
+```
+Título: "Jornada activa"
+Cuerpo: "Tu ubicación se comparte mientras estás en jornada."
+```
+
+**Archivos creados:**
+- `src/features/tracking/tasks/workdayBackgroundTask.ts`
+- `src/features/tracking/hooks/useWorkdayTracking.ts`
+
+**Archivos modificados:**
+- `src/features/workday/hooks/useWorkday.ts`
+- `src/core/hooks/useSessionRestore.ts`
+- `index.ts`
+
+---
+
+### CAMBIO-62 — Solicitud automática de permisos al abrir la app
+
+**Problema:** La app no pedía permisos de ubicación ni cámara al primer arranque. El usuario tenía que otorgarlos manualmente desde los ajustes del sistema.
+
+**Causa raíz:** `usePermissions` tenía `if (!user) return` en el efecto — solo pedía permisos si había sesión activa. En el primer arranque, `user` es `null` y el efecto nunca corría.
+
+**Solución:** Se reescribió `usePermissions`:
+- Eliminada la condición `!user` — los permisos se piden al montar la app sin importar si hay sesión.
+- Añadido `requestBackgroundPermissionsAsync` (faltaba — necesario para el task de jornada).
+- Cambiado `useState` por `useRef` para el guard de doble ejecución (no necesita re-render).
+- Orden correcto: foreground location → background location → cámara (Android requiere foreground antes de background).
+
+**Archivos modificados:**
+- `src/core/hooks/usePermissions.ts`
+
+---
+
+### CAMBIO-63 — Migración de tiles de mapa: Maptiler → OpenStreetMap
+
+**Problema:** Los archivos `CourierServiceMap.tsx` y `TrackingMap.tsx` seguían usando tiles de Maptiler (`api.maptiler.com`) a pesar de que el documento `maptiler-to-osm-migration.md` describía la migración como completada. El costo era $858.89/mes.
+
+**Causa raíz:** El documento era aspiracional — los archivos reales nunca fueron actualizados.
+
+**Solución:** Aplicada la migración en ambos componentes:
+- URL cambiada de `https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=...` a `https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png`
+- Eliminado `import { MAPTILER_KEY } from '@/config/map'` en ambos archivos.
+- Eliminado el parámetro `maptilerKey` de las funciones `buildServiceMapHtml` y `buildLeafletHtml`.
+- Añadida la atribución requerida por OSM (oculta visualmente con CSS pero presente en el HTML).
+- Eliminado el plugin duplicado `expo-secure-store` en `app.json`.
+
+**Costo después:** $0/mes.
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+- `src/features/tracking/components/TrackingMap.tsx`
+
+---
+
+### CAMBIO-64 — Identidad visual del APK (nombre e ícono)
+
+**Problema:** El APK generado mostraba el nombre `courier-mobile-app` y el ícono default de Expo (lambda azul) en el launcher del dispositivo.
+
+**Causa raíz:** `app.json` tenía `"name": "courier-mobile-app"` y `"icon": "./assets/icon.png"` (ícono default). El `logo.png` existía en assets pero no estaba referenciado.
+
+**Solución:**
+- `"name"` → `"TracKing"`
+- `"icon"` → `"./assets/logo.png"`
+- `"splash.image"` → `"./assets/logo.png"`
+- `"android.adaptiveIcon.foregroundImage"` → `"./assets/logo.png"` con `"backgroundColor": "#ffffff"`
+- Eliminadas las referencias a `android-icon-foreground.png`, `android-icon-background.png`, `android-icon-monochrome.png` del adaptive icon.
+
+**Nota:** Requiere rebuild del APK para que los cambios se reflejen. Un reload de Expo Go no actualiza el ícono ni el nombre.
+
+**Archivos modificados:**
+- `app.json`
+
+---
+
+### CAMBIO-65 — Teléfono del cliente con acciones rápidas en cards de servicio
+
+**Problema:** Las cards de servicio no mostraban el teléfono del cliente. El botón 📞 en `ServiceCard` existía pero no hacía nada. El mensajero no tenía forma de contactar al cliente desde la app.
+
+**Causa raíz:** El campo `destination_contact_number` no estaba en el tipo `Service` ni era devuelto/mostrado en ningún componente.
+
+**Solución:**
+
+1. **Tipo `Service`** — añadido `destination_contact_number?: string`.
+
+2. **`PhoneActions.tsx`** (componente nuevo) — tres botones de acción para un número de teléfono:
+   - 📋 **Copiar** — `Clipboard.setString()` con confirmación via `Alert`
+   - 📞 **Llamar** — `Linking.openURL('tel:...')`
+   - 💬 **WhatsApp** — `Linking.openURL('https://wa.me/...')` (dígitos limpios sin `+`)
+   - Normaliza el número antes de construir URLs (elimina espacios, guiones, paréntesis).
+
+3. **`ServiceCard.tsx`** — el botón 📞 ahora está en el `topRow` (esquina superior derecha, `marginLeft: 'auto'`). Al tocarlo abre un bottom sheet modal con el nombre del cliente y los tres botones. Solo aparece si el servicio tiene `destination_contact_number`.
+
+4. **`ActiveServiceCard.tsx`** (dashboard) — mismo botón 📞 en el `topRow`, mismo modal. `e.stopPropagation()` evita que el tap en el botón navegue al detalle del servicio.
+
+5. **`ServiceDetailScreen.tsx`** — en la sección de ruta, debajo de "Destinatario", se muestran el número y los tres botones cuando el campo está disponible.
+
+**Archivos creados:**
+- `src/features/services/components/PhoneActions.tsx`
+
+**Archivos modificados:**
+- `src/features/services/types/services.types.ts`
+- `src/features/services/components/ServiceCard.tsx`
+- `src/features/dashboard/components/ActiveServiceCard.tsx`
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-66 — Corrección de bugs preexistentes en tests
+
+**Problema 1 — `useDashboard`:** `activeService` incluía servicios con estado `ASSIGNED` en su filtro (`ASSIGNED || ACCEPTED || IN_TRANSIT`). Los tests esperaban correctamente que `ASSIGNED` no fuera un servicio activo — `ASSIGNED` significa asignado pero no aceptado aún por el mensajero.
+
+**Solución:** Filtro corregido a solo `ACCEPTED || IN_TRANSIT`.
+
+**Problema 2 — `fcm.service.test.ts`:** El mock de `@react-native-firebase/messaging` en `jest.setup.js` usaba `module.exports = messaging` sin exponer `.default`. `fcm.service.ts` hace `require(...).default` para lazy-load Firebase, obteniendo `undefined`.
+
+**Solución:** Añadido `messaging.default = messaging` al mock para que `require(...).default` retorne la función mock correctamente.
+
+**Archivos modificados:**
+- `src/features/dashboard/hooks/useDashboard.ts`
+- `jest.setup.js`
+
+---
+
+### CAMBIO-67 — Instalación de dependencias web
+
+**Dependencias instaladas** para soporte de vista web (`expo start --web`):
+- `react-dom@19.2.0`
+- `react-native-web@0.21.0`
+
+---
+
+### Resumen de cambios
+
+| ID | Cambio | Impacto |
+|---|---|---|
+| CAMBIO-61 | Background tracking durante toda la jornada | Ubicación enviada aunque la app esté cerrada |
+| CAMBIO-62 | Permisos solicitados al abrir la app | No más configuración manual en ajustes |
+| CAMBIO-63 | Tiles OSM (Maptiler eliminado) | $858.89/mes → $0/mes |
+| CAMBIO-64 | Nombre "TracKing" e ícono del logo en APK | Identidad visual correcta en el launcher |
+| CAMBIO-65 | Teléfono del cliente con copiar/llamar/WhatsApp | Mensajero puede contactar al cliente desde la card |
+| CAMBIO-66 | Bugs preexistentes en tests corregidos | 20/20 suites, 212/212 tests pasando |
+| CAMBIO-67 | react-dom + react-native-web instalados | Soporte para `expo start --web` |
+
+---
+
+### Bugs corregidos
+
+| ID | Problema | Impacto | Resolución |
+|---|---|---|---|
+| BUG-39 | Background task solo activo en IN_SERVICE | Sin ubicación cuando app cerrada en AVAILABLE | Nuevo task `workday-background-location` |
+| BUG-40 | Permisos nunca solicitados en primer arranque | Usuario debía otorgarlos manualmente | `usePermissions` sin condición de sesión |
+| BUG-41 | `requestBackgroundPermissionsAsync` faltaba en permisos | Task de jornada sin permiso de background | Añadido al flujo de permisos |
+| BUG-42 | Tiles Maptiler en producción ($858/mes) | Costo innecesario | Migración a OSM |
+| BUG-43 | APK con nombre `courier-mobile-app` e ícono default | Identidad visual incorrecta | `app.json` actualizado |
+| BUG-44 | Botón 📞 en ServiceCard no hacía nada | Mensajero sin forma de contactar al cliente | `PhoneActions` + modal |
+| BUG-45 | `activeService` incluía ASSIGNED incorrectamente | KPI y lógica de servicio activo erróneos | Filtro corregido a ACCEPTED/IN_TRANSIT |
+| BUG-46 | Mock de Firebase sin `.default` | 13 tests de FCM fallando | `messaging.default = messaging` en mock |
+
+---
+
+*Actualización: 1 de Mayo de 2026 — Background Tracking + Permisos + OSM + Identidad APK + Teléfono Cliente*
+
+---
+
+## Sesión 1 de Mayo de 2026 (continuación) — Navegación, Contactos, Dashboard
+
+### Contexto
+
+Segunda parte de la sesión del 1 de Mayo. Se realizaron mejoras en navegación externa (Google Maps / Waze), contactos de servicio con menú hamburguesa, eliminación del tab de mapa, y visualización de todos los servicios activos en el dashboard.
+
+---
+
+### CAMBIO-68 — Botones de navegación externa en el mapa del servicio
+
+**Problema:** El mensajero no tenía forma de abrir la ruta en una app de navegación externa desde el mapa del servicio.
+
+**Solución:** Se añadieron dos botones superpuestos en la esquina superior derecha del mapa (`CourierServiceMap`), visibles tanto en el modo 260px del detalle como en pantalla completa:
+
+- **🗺️ Maps** → `https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&travelmode=driving`
+- **🚗 Waze** → `https://waze.com/ul?ll=DEST_LAT,DEST_LNG&navigate=yes`
+
+Si la app nativa está instalada, el OS la abre directamente. Si no, abre el navegador. Waze solo soporta destino final en su deep link público (sin waypoints intermedios).
+
+Los botones usan `position: 'absolute'` con sombra ligera para ser legibles sobre cualquier tile del mapa.
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+
+---
+
+### CAMBIO-69 — Eliminación del tab "Mapa" y TrackingScreen
+
+**Problema:** El tab "Mapa" (`TrackingScreen`) era redundante — el mapa del servicio ya está disponible en `ServiceDetailScreen` y los botones de navegación externa cubren el caso de uso principal. Además, `TrackingScreen` era el dueño del ciclo de vida del tracking de foreground, lo que requería mantener el tab montado.
+
+**Solución:**
+- `TrackingScreen.tsx` eliminado.
+- Tab `Tracking` eliminado de `TabNavigator`. La barra inferior queda con 4 tabs: Inicio, Servicios, Reportes, Config.
+- `useLocation({ active: isInService })` movido a `HomeScreen` — siempre montado como primer tab, garantiza que el ciclo de vida del tracking de foreground siga funcionando.
+
+**Archivos eliminados:**
+- `src/features/tracking/screens/TrackingScreen.tsx`
+
+**Archivos modificados:**
+- `src/app/navigation/TabNavigator.tsx`
+- `src/features/dashboard/screens/HomeScreen.tsx`
+
+---
+
+### CAMBIO-70 — Botón "Navegar" eliminado de ServiceCard
+
+**Problema:** El botón "Navegar" en la card de servicio activo (`ACCEPTED`/`IN_TRANSIT`) llamaba `onPress` — exactamente lo mismo que tocar la card entera. Era completamente redundante.
+
+**Solución:** Botón eliminado. La navegación al detalle se hace tocando la card. Los botones de Google Maps y Waze están disponibles dentro del mapa en `ServiceDetailScreen`.
+
+**Archivos modificados:**
+- `src/features/services/components/ServiceCard.tsx`
+
+---
+
+### CAMBIO-71 — Menú de contactos con hamburguesa (dos teléfonos por servicio)
+
+**Problema:** El botón 📞 anterior solo mostraba el teléfono de quien recibe el paquete (`destination_contact_number`). No había forma de contactar al cliente que hizo el pedido, ni distinción visual entre los dos contactos.
+
+**Solución completa:**
+
+1. **Tipo `Service`** — añadido `origin_contact_phone?: string` (teléfono del cliente que hizo el pedido).
+
+2. **`ContactsMenu.tsx`** (componente nuevo) — botón hamburguesa `☰` que abre un bottom sheet con dos secciones diferenciadas:
+   - **👤 Cliente** — quien hizo el pedido (`origin_contact_phone`)
+   - **📦 Quien recibe** — quien recibe el paquete (`destination_contact_number`)
+   
+   Cada sección muestra nombre, número y los tres botones de `PhoneActions` (📋 Copiar / 📞 Llamar / 💬 WhatsApp). Si solo hay un teléfono disponible, solo aparece esa sección. Si no hay ninguno, el botón no se renderiza. Prop `stopPropagation` para evitar que el tap burbujee al card padre.
+
+3. **`ServiceCard`** — reemplazado el botón 📞 y el `PhoneModal` con `ContactsMenu` en el `topRow` (esquina superior derecha).
+
+4. **`ActiveServiceCard`** — mismo reemplazo. Se eliminó el `Modal` inline y la dependencia de `PhoneActions` directa.
+
+5. **`ServiceDetailScreen`** — en la sección de ruta, fila "Contactos" con el `ContactsMenu` cuando hay al menos un teléfono disponible.
+
+**Archivos creados:**
+- `src/features/services/components/ContactsMenu.tsx`
+
+**Archivos modificados:**
+- `src/features/services/types/services.types.ts`
+- `src/features/services/components/ServiceCard.tsx`
+- `src/features/dashboard/components/ActiveServiceCard.tsx`
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-72 — Dashboard muestra todos los servicios activos
+
+**Problema:** El dashboard solo mostraba un único `activeService` (el primero en estado `ACCEPTED` o `IN_TRANSIT`). Los servicios `ASSIGNED` y los demás servicios activos no aparecían.
+
+**Causa raíz:** `useDashboard` usaba `.find()` en lugar de `.filter()`, y solo buscaba `ACCEPTED | IN_TRANSIT`.
+
+**Solución:**
+- `useDashboard` ahora expone `activeServices: Service[]` (array) en lugar de `activeService: Service | null`.
+- Filtra por `ASSIGNED | ACCEPTED | IN_TRANSIT` — todos los servicios que el mensajero necesita atender.
+- `HomeScreen` renderiza la lista completa con un título "Servicios activos (N)" y un `map()` de `ActiveServiceCard`.
+- El empty state dice "Sin servicios activos" cuando el array está vacío.
+
+**Archivos modificados:**
+- `src/features/dashboard/hooks/useDashboard.ts`
+- `src/features/dashboard/screens/HomeScreen.tsx`
+- `src/__tests__/dashboard/useDashboard.test.ts` — tests actualizados de `activeService` → `activeServices` con 5 casos nuevos
+
+---
+
+### Resumen de cambios
+
+| ID | Cambio | Impacto |
+|---|---|---|
+| CAMBIO-68 | Botones Google Maps + Waze en el mapa | Navegación externa desde el mapa del servicio |
+| CAMBIO-69 | Tab "Mapa" eliminado, tracking movido a HomeScreen | UI más limpia, tracking sigue funcionando |
+| CAMBIO-70 | Botón "Navegar" redundante eliminado | Menos ruido en la card |
+| CAMBIO-71 | Menú hamburguesa con dos contactos (cliente + receptor) | Mensajero puede contactar a ambas partes |
+| CAMBIO-72 | Dashboard muestra todos los servicios activos | Visibilidad completa de la carga del día |
+
+---
+
+### Bugs corregidos
+
+| ID | Problema | Impacto | Resolución |
+|---|---|---|---|
+| BUG-47 | Solo un servicio visible en dashboard | Mensajero no veía todos sus pedidos del día | `activeServices[]` con filter en lugar de find |
+| BUG-48 | Sin teléfono del cliente en el servicio | Solo se podía contactar a quien recibe | `origin_contact_phone` añadido al tipo y UI |
+| BUG-49 | Botón "Navegar" hacía lo mismo que tocar la card | UX confusa | Eliminado |
+| BUG-50 | Tab "Mapa" redundante con 5 tabs en la barra | Navegación innecesariamente compleja | Tab eliminado, 4 tabs restantes |
+
+---
+
+*Actualización: 1 de Mayo de 2026 (tarde) — Navegación externa + Contactos + Dashboard multi-servicio*

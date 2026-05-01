@@ -1,8 +1,9 @@
 import { registerRootComponent } from 'expo';
 
-// Background location task must be defined before the React tree mounts.
-// This import registers the task with expo-task-manager at module load time.
+// Background location tasks must be defined before the React tree mounts.
+// These imports register the tasks with expo-task-manager at module load time.
 import './src/features/tracking/tasks/backgroundLocationTask';
+import './src/features/tracking/tasks/workdayBackgroundTask';
 
 // FCM background handler must be registered before the React tree mounts.
 import { setBackgroundMessageHandler } from './src/core/notifications/fcm.service';

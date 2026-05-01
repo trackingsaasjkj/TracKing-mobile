@@ -6,6 +6,7 @@ import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
 import { Button } from '@/shared/ui/components/Button';
 import { StatusBadge } from './StatusBadge';
+import { ContactsMenu } from './ContactsMenu';
 import type { Service } from '../types/services.types';
 
 interface ServiceCardProps {
@@ -73,7 +74,9 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
   const isActive = service.status === 'IN_TRANSIT' || service.status === 'ACCEPTED';
   const isCompleted = service.status === 'DELIVERED';
   const isPending = service.status === 'ASSIGNED';
+  const hasContacts = !!(service.origin_contact_phone || service.destination_contact_number);
 
+  // ── Completed ──────────────────────────────────────────────────────────────
   if (isCompleted) {
     return (
       <TouchableOpacity
@@ -95,6 +98,7 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
     );
   }
 
+  // ── Active (ACCEPTED / IN_TRANSIT) ─────────────────────────────────────────
   if (isActive) {
     return (
       <TouchableOpacity
@@ -107,6 +111,15 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
           <Text style={[styles.orderId, { color: colors.neutral500 }]}>
             #{service.id.slice(-4).toUpperCase()}
           </Text>
+          {hasContacts && (
+            <View style={styles.menuWrap}>
+              <ContactsMenu
+                customerPhone={service.origin_contact_phone}
+                recipientPhone={service.destination_contact_number}
+                recipientName={service.destination_name}
+              />
+            </View>
+          )}
         </View>
         <RouteBlock origin={service.origin_address} destination={service.destination_address} />
         <View style={styles.footer}>
@@ -114,17 +127,12 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
             name={service.destination_name}
             sub={PAYMENT_LABEL[service.payment_method] ?? service.payment_method}
           />
-          <View style={styles.actions}>
-            <TouchableOpacity style={[styles.callBtn, { backgroundColor: colors.neutral100 }]} activeOpacity={0.7}>
-              <Text style={styles.callIcon}>📞</Text>
-            </TouchableOpacity>
-            <Button label="Navegar" onPress={onPress} size="sm" variant="primary" />
-          </View>
         </View>
       </TouchableOpacity>
     );
   }
 
+  // ── Pending (ASSIGNED) ─────────────────────────────────────────────────────
   return (
     <TouchableOpacity
       style={[styles.card, { backgroundColor: colors.surface, shadowColor: colors.black }, shadows.sm]}
@@ -136,6 +144,15 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
         <Text style={[styles.orderId, { color: colors.neutral500 }]}>
           #{service.id.slice(-4).toUpperCase()}
         </Text>
+        {hasContacts && (
+          <View style={styles.menuWrap}>
+            <ContactsMenu
+              customerPhone={service.origin_contact_phone}
+              recipientPhone={service.destination_contact_number}
+              recipientName={service.destination_name}
+            />
+          </View>
+        )}
       </View>
       <RouteBlock origin={service.origin_address} destination={service.destination_address} />
       <ClientRow
@@ -159,11 +176,13 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
   );
 }
 
+// ─── Styles ──────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   card: { borderRadius: borderRadius.lg, padding: spacing.lg, marginBottom: spacing.md },
   cardCompleted: { opacity: 0.85 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.md },
   orderId: { fontSize: fontSize.xs, fontWeight: fontWeight.medium },
+  menuWrap: { marginLeft: 'auto' },
   route: { marginBottom: spacing.md },
   routeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   dotOrigin: { width: 9, height: 9, borderRadius: 5, marginTop: 3 },
@@ -180,9 +199,6 @@ const styles = StyleSheet.create({
   clientName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   clientSub: { fontSize: fontSize.xs, marginTop: 1 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.sm },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  callBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  callIcon: { fontSize: 16 },
   pendingActions: {
     flexDirection: 'row', gap: spacing.sm,
     marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1,

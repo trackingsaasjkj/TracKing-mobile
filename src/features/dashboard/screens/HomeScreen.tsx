@@ -14,6 +14,7 @@ import { KPIBox } from '../components/KPIBox';
 import { ActiveServiceCard } from '../components/ActiveServiceCard';
 import { DailyProgress } from '../components/DailyProgress';
 import { useDashboard } from '../hooks/useDashboard';
+import { useLocation } from '@/features/tracking/hooks/useLocation';
 import type { MainTabParamList } from '@/app/navigation/TabNavigator';
 
 type HomeNav = BottomTabNavigationProp<MainTabParamList, 'Home'>;
@@ -22,7 +23,13 @@ export function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const navigation = useNavigation<HomeNav>();
   const { colors } = useTheme();
-  const { kpis, activeService, loading, refreshing, error, refresh } = useDashboard();
+  const { kpis, activeServices, loading, refreshing, error, refresh } = useDashboard();
+
+  // HomeScreen is always mounted — it owns the foreground tracking lifecycle.
+  // Starts the 15s GPS interval + background task when courier is IN_SERVICE.
+  // (Previously lived in TrackingScreen which has been removed.)
+  const operationalStatus = useAuthStore((s) => s.user?.operationalStatus);
+  useLocation({ active: operationalStatus === 'IN_SERVICE' });
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} onRetry={refresh} />;
@@ -46,22 +53,28 @@ export function HomeScreen() {
 
         <DailyProgress completed={kpis.completed} total={totalOrders} />
 
-        {activeService ? (
+        {activeServices.length > 0 ? (
           <View style={styles.activeSection}>
-            <ActiveServiceCard
-              service={activeService}
-              onViewDetails={(serviceId) =>
-                navigation.navigate('Orders', {
-                  screen: 'ServiceDetail',
-                  params: { serviceId },
-                })
-              }
-            />
+            <Text style={[styles.sectionTitle, { color: colors.neutral500 }]}>
+              Servicios activos ({activeServices.length})
+            </Text>
+            {activeServices.map((svc) => (
+              <ActiveServiceCard
+                key={svc.id}
+                service={svc}
+                onViewDetails={(serviceId) =>
+                  navigation.navigate('Orders', {
+                    screen: 'ServiceDetail',
+                    params: { serviceId },
+                  } as any)
+                }
+              />
+            ))}
           </View>
         ) : (
           <View style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
             <Text style={styles.emptyIcon}>📦</Text>
-            <Text style={[styles.emptyText, { color: colors.neutral800 }]}>Sin servicio activo</Text>
+            <Text style={[styles.emptyText, { color: colors.neutral800 }]}>Sin servicios activos</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Orders')} activeOpacity={0.7}>
               <Text style={[styles.emptyLink, { color: colors.primary }]}>
                 Ver todos los pedidos
@@ -84,7 +97,15 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
-  activeSection: { marginTop: spacing.md },
+  activeSection: { marginTop: spacing.md, gap: spacing.sm },
+  sectionTitle: {
+    fontSize: fontSize.xs,
+    fontWeight: fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.xs,
+  },
   emptyCard: {
     margin: spacing.lg,
     marginTop: spacing.md,

@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text, Linking, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type WebViewType from 'react-native-webview';
 import { useTheme } from '@/shared/ui/useTheme';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
-import { MAPTILER_KEY } from '@/config/map';
+import { fontSize, fontWeight } from '@/shared/ui/typography';
 
 export interface CourierServiceMapProps {
   originLat: number;
@@ -21,6 +21,43 @@ export interface CourierServiceMapProps {
    * the fixed 260px height used inside ServiceDetailScreen's scroll view.
    */
   fullScreen?: boolean;
+}
+
+/**
+ * Opens the origin → destination route in Google Maps (external app).
+ * Falls back to Google Maps web if the native app is not installed.
+ *
+ * URL format:
+ *   https://www.google.com/maps/dir/?api=1&origin=LAT,LNG&destination=LAT,LNG&travelmode=driving
+ */
+function openInGoogleMaps(
+  oLat: number, oLng: number,
+  dLat: number, dLng: number,
+) {
+  const url =
+    `https://www.google.com/maps/dir/?api=1` +
+    `&origin=${oLat},${oLng}` +
+    `&destination=${dLat},${dLng}` +
+    `&travelmode=driving`;
+
+  Linking.openURL(url).catch(() =>
+    Alert.alert('Error', 'No se pudo abrir Google Maps'),
+  );
+}
+
+/**
+ * Opens the destination in Waze (external app).
+ * Waze deep link only supports a single destination (no waypoints).
+ * Falls back to Waze web if the native app is not installed.
+ *
+ * URL format:
+ *   https://waze.com/ul?ll=LAT,LNG&navigate=yes
+ */
+function openInWaze(dLat: number, dLng: number) {
+  const url = `https://waze.com/ul?ll=${dLat},${dLng}&navigate=yes`;
+  Linking.openURL(url).catch(() =>
+    Alert.alert('Error', 'No se pudo abrir Waze'),
+  );
 }
 
 export function CourierServiceMap({
@@ -52,7 +89,6 @@ export function CourierServiceMap({
         courierLng ?? null,
         colors.primary,
         colors.white,
-        MAPTILER_KEY,
       ),
     // Only rebuild if static data changes — courier coords are handled via postMessage
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -83,6 +119,27 @@ export function CourierServiceMap({
         originWhitelist={['*']}
         onError={() => {}}
       />
+
+      {/* Navigation buttons — overlaid on top-right corner of the map */}
+      <View style={styles.navBtns}>
+        <TouchableOpacity
+          style={[styles.navBtn, { backgroundColor: colors.surface }]}
+          activeOpacity={0.85}
+          onPress={() => openInGoogleMaps(originLat, originLng, destinationLat, destinationLng)}
+        >
+          <Text style={styles.navIcon}>🗺️</Text>
+          <Text style={[styles.navLabel, { color: colors.neutral800 }]}>Maps</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.navBtn, { backgroundColor: colors.surface }]}
+          activeOpacity={0.85}
+          onPress={() => openInWaze(destinationLat, destinationLng)}
+        >
+          <Text style={styles.navIcon}>🚗</Text>
+          <Text style={[styles.navLabel, { color: colors.neutral800 }]}>Waze</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -90,7 +147,7 @@ export function CourierServiceMap({
 // ─── HTML builder ─────────────────────────────────────────────────────────────
 // Why WebView + Leaflet instead of react-native-maps:
 //   - react-native-maps defaults to Google Maps which requires billing setup
-//   - Leaflet + Maptiler is 100% free up to 100k tiles/mo, no credit card needed
+//   - Leaflet + OpenStreetMap is 100% free, no API key needed
 //   - Same visual quality, supports fitBounds natively via Leaflet API
 //   - Courier marker updates via postMessage — no full reload on each GPS tick
 function buildServiceMapHtml(
@@ -104,7 +161,6 @@ function buildServiceMapHtml(
   cLng: number | null,
   primaryColor: string,
   borderColor: string,
-  maptilerKey: string,
 ): string {
   const hasCourier = cLat != null && cLng != null;
   const courierInit = hasCourier
@@ -131,8 +187,11 @@ function buildServiceMapHtml(
     var map = L.map('map', { zoomControl: false, attributionControl: false });
 
     L.tileLayer(
-      'https://api.maptiler.com/maps/streets/{z}/{x}/{y}.png?key=${maptilerKey}',
-      { maxZoom: 19 }
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      }
     ).addTo(map);
 
     // Origin pin — green
@@ -220,4 +279,26 @@ const styles = StyleSheet.create({
     marginVertical: 0,
   },
   map: { flex: 1 },
+  navBtns: {
+    position: 'absolute',
+    top: spacing.sm,
+    right: spacing.sm,
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  navBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  navIcon: { fontSize: 13 },
+  navLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
 });

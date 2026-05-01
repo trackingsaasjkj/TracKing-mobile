@@ -5,7 +5,8 @@ import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
 import { StatusBadge } from '@/features/services/components/StatusBadge';
-import { useServices, nextStatus } from '@/features/services/hooks/useServices';
+import { ContactsMenu } from '@/features/services/components/ContactsMenu';
+import { useServices } from '@/features/services/hooks/useServices';
 import type { Service } from '@/features/services/types/services.types';
 
 interface ActiveServiceCardProps {
@@ -48,6 +49,7 @@ export function ActiveServiceCard({ service, onPress, onNavigate, onViewDetails 
 
   const buttonLabel = getButtonLabel();
   const isLoading = actionLoading === service.id;
+  const hasContacts = !!(service.origin_contact_phone || service.destination_contact_number);
 
   return (
     <TouchableOpacity
@@ -60,6 +62,16 @@ export function ActiveServiceCard({ service, onPress, onNavigate, onViewDetails 
         <Text style={[styles.orderId, { color: colors.neutral500 }]}>
           #{service.id.slice(-4).toUpperCase()}
         </Text>
+        {hasContacts && (
+          <View style={styles.menuWrap}>
+            <ContactsMenu
+              customerPhone={service.origin_contact_phone}
+              recipientPhone={service.destination_contact_number}
+              recipientName={service.destination_name}
+              stopPropagation
+            />
+          </View>
+        )}
       </View>
 
       <View style={styles.route}>
@@ -130,6 +142,7 @@ const styles = StyleSheet.create({
   },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.lg },
   orderId: { fontSize: fontSize.xs, fontWeight: fontWeight.medium },
+  menuWrap: { marginLeft: 'auto' },
   route: { marginBottom: spacing.lg },
   routeRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md },
   dotOrigin: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
@@ -155,12 +168,4 @@ const styles = StyleSheet.create({
   },
   actionBtnText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  callBtn: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
-  callIcon: { fontSize: 18 },
-  navigateBtn: {
-    flexDirection: 'row', alignItems: 'center',
-    borderRadius: borderRadius.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, gap: spacing.xs,
-  },
-  navigateIcon: { fontSize: 14 },
-  navigateText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
 });

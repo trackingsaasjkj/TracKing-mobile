@@ -123,15 +123,35 @@ export function ServiceDetailScreen() {
           />
         )}
 
+        {/* Recogida (Origen) */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Row label="Origen" value={service.origin_address} colors={colors} />
-          <Row label="Destino" value={service.destination_address} colors={colors} />
-          <Row label="Destinatario" value={service.destination_name} colors={colors} />
-          {(service.origin_contact_phone || service.destination_contact_number) && (
+          <Text style={[styles.sectionTitle, { color: colors.neutral500 }]}>Recogida</Text>
+          {service.customer?.name && (
+            <Row label="Nombre" value={service.customer.name} colors={colors} />
+          )}
+          <Row label="Dirección" value={service.origin_address} colors={colors} />
+          {service.origin_contact_phone && (
             <View style={styles.contactsRow}>
-              <Text style={[styles.contactsLabel, { color: colors.neutral500 }]}>Contactos</Text>
+              <Text style={[styles.contactsLabel, { color: colors.neutral500 }]}>Teléfono</Text>
               <ContactsMenu
                 customerPhone={service.origin_contact_phone}
+                recipientPhone={undefined}
+                recipientName={undefined}
+              />
+            </View>
+          )}
+        </View>
+
+        {/* Entrega (Destino) */}
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.neutral500 }]}>Entrega</Text>
+          <Row label="Nombre" value={service.destination_name} colors={colors} />
+          <Row label="Dirección" value={service.destination_address} colors={colors} />
+          {service.destination_contact_number && (
+            <View style={styles.contactsRow}>
+              <Text style={[styles.contactsLabel, { color: colors.neutral500 }]}>Teléfono</Text>
+              <ContactsMenu
+                customerPhone={undefined}
                 recipientPhone={service.destination_contact_number}
                 recipientName={service.destination_name}
               />

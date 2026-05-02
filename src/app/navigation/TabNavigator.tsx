@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
 import { ServicesNavigator } from '@/features/services/navigation/ServicesNavigator';
 import { WorkdayScreen } from '@/features/workday/screens/WorkdayScreen';
 import { EarningsScreen } from '@/features/earnings/screens/EarningsScreen';
+import { withSwipeNavigation } from './withSwipeNavigation';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -25,20 +26,34 @@ const TAB_ICONS: Record<keyof MainTabParamList, { active: string; inactive: stri
   Config:   { active: '⚙️', inactive: '🔧' },
 };
 
+// Envolver componentes con swipe navigation
+const HomeScreenWithSwipe = withSwipeNavigation(HomeScreen);
+const ServicesNavigatorWithSwipe = withSwipeNavigation(ServicesNavigator);
+const EarningsScreenWithSwipe = withSwipeNavigation(EarningsScreen);
+const WorkdayScreenWithSwipe = withSwipeNavigation(WorkdayScreen);
+
 export function TabNavigator() {
   const { colors } = useTheme();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
+  const lastTabRef = useRef<string>('Home');
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener('tabPress', (e) => {
-      const route = e.target?.split('-')[0];
-      // Reset Orders stack when pressing Orders tab
-      if (route === 'Orders') {
+    const unsubscribe = navigation.addListener('state', (e) => {
+      // Get the current route
+      const state = e.data.state;
+      const currentRoute = state.routes[state.index]?.name;
+
+      // If we're leaving Orders tab, reset its stack
+      if (lastTabRef.current === 'Orders' && currentRoute !== 'Orders') {
+        // Navigate to Orders with ServicesList to reset the stack
         navigation.navigate('Orders', {
           screen: 'ServicesList',
         } as any);
       }
+
+      lastTabRef.current = currentRoute || 'Home';
     });
+
     return unsubscribe;
   }, [navigation]);
 
@@ -62,10 +77,10 @@ export function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home"     component={HomeScreen}        options={{ title: 'Inicio' }} />
-      <Tab.Screen name="Orders"   component={ServicesNavigator} options={{ title: 'Servicios', headerShown: false }} />
-      <Tab.Screen name="Earnings" component={EarningsScreen}    options={{ title: 'Reportes' }} />
-      <Tab.Screen name="Config"   component={WorkdayScreen}     options={{ title: 'Config' }} />
+      <Tab.Screen name="Home"     component={HomeScreenWithSwipe}        options={{ title: 'Inicio' }} />
+      <Tab.Screen name="Orders"   component={ServicesNavigatorWithSwipe} options={{ title: 'Servicios', headerShown: false }} />
+      <Tab.Screen name="Earnings" component={EarningsScreenWithSwipe}    options={{ title: 'Reportes' }} />
+      <Tab.Screen name="Config"   component={WorkdayScreenWithSwipe}     options={{ title: 'Config' }} />
     </Tab.Navigator>
   );
 }

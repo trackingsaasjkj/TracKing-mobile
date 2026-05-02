@@ -31,6 +31,12 @@ export interface Service {
   destination_lat?: number | null;
   destination_lng?: number | null;
   destination_verified?: boolean;
+  // Customer info
+  customer?: {
+    id: string;
+    name: string;
+    phone?: string;
+  };
 }
 
 export interface PaginatedResponse<T> {

@@ -24,7 +24,7 @@ export const darkColors = {
 
   // Neutrals (Slate/Navy)
   neutral50:    '#F8FAFC',
-  neutral100:   '#E2E8F0',
+  neutral100:   '#1958acff',
   neutral200:   '#94A3B8',
   neutral400:   '#64748B',
   neutral500:   '#94A3B8',

@@ -23,9 +23,13 @@ interface CourierMeResponse {
 
 /**
  * Restarts the workday background location task if the courier is already
- * AVAILABLE or IN_SERVICE when the app launches (e.g. after a force-close).
+ * IN_SERVICE when the app launches (e.g. after a force-close).
  * The task may have been killed by the OS — this ensures it's always running
- * during an active workday.
+ * during an active service delivery.
+ *
+ * Note: If the courier is AVAILABLE (no active services), tracking is NOT
+ * restarted. It will be started automatically by useServiceTracking when
+ * the courier accepts a service.
  */
 async function restoreWorkdayTracking(): Promise<void> {
   try {
@@ -39,6 +43,14 @@ async function restoreWorkdayTracking(): Promise<void> {
       WORKDAY_BACKGROUND_TASK,
     ).catch(() => false);
     if (isRunning) return; // already running — nothing to do
+
+    // Only restore tracking if courier is IN_SERVICE (actively delivering)
+    // If AVAILABLE, useServiceTracking will start it when a service is accepted
+    const state = useAuthStore.getState();
+    if (state.user?.operationalStatus !== 'IN_SERVICE') {
+      console.log('[SessionRestore] Courier not IN_SERVICE, skipping tracking restore');
+      return;
+    }
 
     await ExpoLocation.startLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK, {
       accuracy: ExpoLocation.Accuracy.Balanced,
@@ -91,12 +103,10 @@ export function useSessionRestore() {
 
         setSession(user, token);
 
-        // If the courier is already in an active workday, ensure the background
+        // If the courier is IN_SERVICE (actively delivering), ensure the background
         // location task is running — it may have been killed by the OS.
-        if (
-          profile.operational_status === 'AVAILABLE' ||
-          profile.operational_status === 'IN_SERVICE'
-        ) {
+        // If AVAILABLE, useServiceTracking will start it when a service is accepted.
+        if (profile.operational_status === 'IN_SERVICE') {
           await restoreWorkdayTracking();
         }
       } catch {

@@ -39,7 +39,7 @@ export function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           <View style={styles.hero}>
             <View style={[styles.heroIllustration, { backgroundColor: colors.primaryBg, shadowColor: colors.black }, shadows.md]}>
-              <Image source={require('../../../../assets/logo.png')} style={styles.logoImage} resizeMode="contain" />
+              <Image source={require('../../../../assets/icon.png')} style={styles.logoImage} resizeMode="contain" />
             </View>
             <Text style={[styles.brandName, { color: colors.primary }]}>TracKing</Text>
           </View>

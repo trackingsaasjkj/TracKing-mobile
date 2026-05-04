@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSessionRestore } from '@/core/hooks/useSessionRestore';
 import { usePermissions } from '@/core/hooks/usePermissions';
+import { useServiceTracking } from '@/features/tracking/hooks/useServiceTracking';
 import { useTheme } from '@/shared/ui/useTheme';
 import { TabNavigator } from './TabNavigator';
 import { LoginScreen } from '@/features/auth/screens/LoginScreen';
@@ -22,6 +23,9 @@ export function RootNavigator() {
   
   // Request permissions on app start
   usePermissions();
+
+  // Monitor service status changes and manage background location tracking
+  useServiceTracking();
 
   if (isRestoring) {
     return (

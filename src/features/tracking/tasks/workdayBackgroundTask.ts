@@ -18,8 +18,9 @@ export const WORKDAY_BACKGROUND_TASK = 'workday-background-location';
  * runs for the full duration of the shift so the company always knows where
  * available couriers are.
  *
- * Uses sendFromBackground() which reads the JWT directly from SecureStore,
- * since the Zustand store may not be initialized in the background process.
+ * Uses sendFromBackground() which reads the JWT from Zustand first (in-memory),
+ * then falls back to SecureStore (persisted to disk). This ensures the token
+ * is available even if the app closes before secureStorage.setToken() completes.
  */
 TaskManager.defineTask(
   WORKDAY_BACKGROUND_TASK,
@@ -27,14 +28,20 @@ TaskManager.defineTask(
     data,
     error,
   }: TaskManager.TaskManagerTaskBody<{ locations: ExpoLocation.LocationObject[] }>) => {
+    console.log('[WorkdayTracking] Background task triggered');
+
     if (error) {
-      console.warn('[WorkdayTracking] Task error:', error.message);
+      console.error('[WorkdayTracking] Task error:', error.message);
       return;
     }
 
-    if (!data?.locations?.length) return;
+    if (!data?.locations?.length) {
+      console.warn('[WorkdayTracking] No locations in task data');
+      return;
+    }
 
     const { latitude, longitude, accuracy } = data.locations[0].coords;
+    console.log('[WorkdayTracking] Location received:', { latitude, longitude, accuracy });
 
     try {
       await locationApi.sendFromBackground({
@@ -42,9 +49,16 @@ TaskManager.defineTask(
         longitude,
         ...(accuracy != null && { accuracy }),
       });
+      console.log('[WorkdayTracking] Location sent successfully');
     } catch (err: any) {
+      console.error('[WorkdayTracking] Error sending location:', {
+        status: err?.status,
+        message: err?.message,
+      });
+
       // 401 = session expired — stop the task
-      if (err?.status === 401 || err?.response?.status === 401) {
+      if (err?.status === 401) {
+        console.warn('[WorkdayTracking] Session expired (401), stopping task');
         const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
           WORKDAY_BACKGROUND_TASK,
         ).catch(() => false);
@@ -52,7 +66,7 @@ TaskManager.defineTask(
           await ExpoLocation.stopLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK).catch(() => {});
         }
       }
-      // All other errors (network, timeout, 400) are silently swallowed
+      // All other errors (network, timeout, 400) are logged but not fatal
     }
   },
 );

@@ -50,7 +50,7 @@ export function useDashboard(): DashboardState {
         let earnings = 0;
         try {
           const summary = await earningsApi.getSummary();
-          earnings = summary.total_earned;
+          earnings = summary.courier_payment;
         } catch {
           // silently ignored — role may not have access
         }

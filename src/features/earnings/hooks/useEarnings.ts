@@ -4,7 +4,7 @@ import { earningsApi } from '../api/earningsApi';
 
 /**
  * Fetches earnings summary from GET /api/courier/settlements/earnings.
- * The response includes total_earned, total_services, total_settlements
+ * The response includes courier_payment, total_services, total_settlements
  * and the full settlements array — a single request covers everything.
  *
  * Previously used /api/liquidations/* (ADMIN-only endpoints) — BUG-09 fix.

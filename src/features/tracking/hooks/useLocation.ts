@@ -64,6 +64,11 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
     if (backgroundGranted.current) return true;
     const { status } = await ExpoLocation.requestBackgroundPermissionsAsync();
     backgroundGranted.current = status === 'granted';
+    if (!backgroundGranted.current) {
+      console.warn('[useLocation] Background location permission denied. Status:', status);
+    } else {
+      console.log('[useLocation] Background location permission granted');
+    }
     return backgroundGranted.current;
   }, []);
 
@@ -130,10 +135,16 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
   const startBackground = useCallback(async () => {
     try {
       const hasBackground = await requestBackgroundPermission();
-      if (!hasBackground) return;
+      if (!hasBackground) {
+        console.warn('[useLocation] Background location permission denied');
+        return;
+      }
 
       const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-      if (isRunning) return; // already running — guard against double registration
+      if (isRunning) {
+        console.log('[useLocation] Background task already running');
+        return; // already running — guard against double registration
+      }
 
       await ExpoLocation.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
         accuracy: ExpoLocation.Accuracy.Balanced,
@@ -147,7 +158,10 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
           notificationColor: colors.primary,
         },
       });
-    } catch {
+      console.log('[useLocation] Background location task started successfully');
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[useLocation] Error starting background task:', errorMsg);
       // expo-task-manager is not available in Expo Go — foreground-only fallback
     }
   }, [requestBackgroundPermission]);

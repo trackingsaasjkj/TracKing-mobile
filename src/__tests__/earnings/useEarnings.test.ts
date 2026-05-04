@@ -27,7 +27,9 @@ function makeSettlement(overrides: Record<string, unknown> = {}) {
     id: 'liq-1',
     courier_id: 'c1',
     company_id: 'co-1',
-    total_earned: 80000,
+    total_collected: 400000,
+    company_commission: 80000,
+    courier_payment: 320000,
     total_services: 10,
     start_date: '2026-01-01T00:00:00Z',
     end_date: '2026-01-15T00:00:00Z',
@@ -38,7 +40,7 @@ function makeSettlement(overrides: Record<string, unknown> = {}) {
 
 function makeSummary(overrides: Record<string, unknown> = {}) {
   return {
-    total_earned: 150000,
+    courier_payment: 640000,
     total_services: 18,
     total_settlements: 2,
     settlements: [makeSettlement(), makeSettlement({ id: 'liq-2' })],
@@ -72,7 +74,7 @@ describe('useEarnings — carga inicial', () => {
     const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
-    expect(result.current.summary?.total_earned).toBe(150000);
+    expect(result.current.summary?.courier_payment).toBe(640000);
     expect(result.current.summary?.total_settlements).toBe(2);
     expect(result.current.liquidations).toHaveLength(2);
     expect(result.current.error).toBeNull();
@@ -136,29 +138,29 @@ describe('earningsApi — endpoints correctos (BUG-09 fix)', () => {
   });
 });
 
-// ─── PBT: total_earned siempre es número ─────────────────────────────────────
+// ─── PBT: courier_payment siempre es número ─────────────────────────────────
 
-describe('P-EARN-1: total_earned del summary siempre es número (PBT)', () => {
-  it('P-EARN-1: para cualquier valor numérico, summary.total_earned se preserva', async () => {
+describe('P-EARN-1: courier_payment del summary siempre es número (PBT)', () => {
+  it('P-EARN-1: para cualquier valor numérico, summary.courier_payment se preserva', async () => {
     await fc.assert(
       fc.asyncProperty(
         fc.float({ min: 0, max: Math.fround(1e9), noNaN: true }),
         fc.integer({ min: 0, max: 1000 }),
         fc.integer({ min: 0, max: 50 }),
-        async (earned, services, settlementsCount) => {
+        async (payment, services, settlementsCount) => {
           jest.clearAllMocks();
           const settlements = Array.from({ length: settlementsCount }, (_, i) =>
             makeSettlement({ id: `liq-${i}` }),
           );
           (earningsApi.getSummary as jest.Mock).mockResolvedValue(
-            makeSummary({ total_earned: earned, total_services: services, settlements }),
+            makeSummary({ courier_payment: payment, total_services: services, settlements }),
           );
 
           const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
           await waitFor(() => expect(result.current.loading).toBe(false));
 
-          expect(typeof result.current.summary?.total_earned).toBe('number');
-          expect(result.current.summary?.total_earned).toBeCloseTo(earned, 4);
+          expect(typeof result.current.summary?.courier_payment).toBe('number');
+          expect(result.current.summary?.courier_payment).toBeCloseTo(payment, 4);
           expect(result.current.liquidations).toHaveLength(settlementsCount);
         },
       ),

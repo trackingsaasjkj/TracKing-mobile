@@ -3,6 +3,11 @@ import * as ExpoLocation from 'expo-location';
 import { WORKDAY_BACKGROUND_TASK } from '../tasks/workdayBackgroundTask';
 import { colors } from '@/shared/ui/colors';
 
+export interface WorkdayTrackingResult {
+  success: boolean;
+  reason?: string;
+}
+
 /**
  * Manages the workday-level background location task.
  *
@@ -12,23 +17,37 @@ import { colors } from '@/shared/ui/colors';
  *
  * The task runs even when the app is closed, ensuring the backend always
  * knows where available couriers are throughout the entire workday.
+ *
+ * Returns a result object with success status and reason for failure (if any).
  */
 export function useWorkdayTracking() {
-  const startWorkdayTracking = useCallback(async (): Promise<void> => {
+  const startWorkdayTracking = useCallback(async (): Promise<WorkdayTrackingResult> => {
     try {
       // Ensure foreground permission first (required before background)
       const { status: fgStatus } = await ExpoLocation.requestForegroundPermissionsAsync();
-      if (fgStatus !== 'granted') return;
+      if (fgStatus !== 'granted') {
+        console.warn('[WorkdayTracking] Foreground location permission denied');
+        return { success: false, reason: 'Permiso de ubicación denegado' };
+      }
 
       // Request background permission (ACCESS_BACKGROUND_LOCATION on Android)
       const { status: bgStatus } = await ExpoLocation.requestBackgroundPermissionsAsync();
-      if (bgStatus !== 'granted') return;
+      if (bgStatus !== 'granted') {
+        console.warn('[WorkdayTracking] Background location permission denied');
+        return {
+          success: false,
+          reason: 'Permiso de ubicación en background denegado. Ve a Configuración > Permisos > Ubicación y selecciona "Permitir todo el tiempo"',
+        };
+      }
 
       // Guard against double registration
       const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
         WORKDAY_BACKGROUND_TASK,
       ).catch(() => false);
-      if (isRunning) return;
+      if (isRunning) {
+        console.log('[WorkdayTracking] Task already running');
+        return { success: true, reason: 'Rastreo ya estaba activo' };
+      }
 
       await ExpoLocation.startLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK, {
         accuracy: ExpoLocation.Accuracy.Balanced,
@@ -41,21 +60,38 @@ export function useWorkdayTracking() {
           notificationColor: colors.primary,
         },
       });
-    } catch {
-      // expo-task-manager unavailable in Expo Go — silently ignore
+
+      console.log('[WorkdayTracking] Background location task started successfully');
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[WorkdayTracking] Error starting background task:', errorMsg);
+      return {
+        success: false,
+        reason: `Error iniciando rastreo: ${errorMsg}`,
+      };
     }
   }, []);
 
-  const stopWorkdayTracking = useCallback(async (): Promise<void> => {
+  const stopWorkdayTracking = useCallback(async (): Promise<WorkdayTrackingResult> => {
     try {
       const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
         WORKDAY_BACKGROUND_TASK,
       ).catch(() => false);
       if (isRunning) {
         await ExpoLocation.stopLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK);
+        console.log('[WorkdayTracking] Background location task stopped');
+        return { success: true };
       }
-    } catch {
-      // Ignore — task may not be registered in Expo Go
+      console.log('[WorkdayTracking] Task was not running');
+      return { success: true, reason: 'Rastreo no estaba activo' };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('[WorkdayTracking] Error stopping background task:', errorMsg);
+      return {
+        success: false,
+        reason: `Error deteniendo rastreo: ${errorMsg}`,
+      };
     }
   }, []);
 

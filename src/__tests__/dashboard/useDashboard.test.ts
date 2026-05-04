@@ -71,7 +71,7 @@ function setupMocks(
 ) {
   (dashboardApi.getProfile as jest.Mock).mockResolvedValue(makeProfile(operational_status));
   (dashboardApi.getAssignedServices as jest.Mock).mockResolvedValue(services);
-  (earningsApi.getSummary as jest.Mock).mockResolvedValue({ total_earned: 0, total_settlements: 0, total_services: 0, settlements: [] });
+  (earningsApi.getSummary as jest.Mock).mockResolvedValue({ courier_payment: 0, total_settlements: 0, total_services: 0, settlements: [] });
 }
 
 // ─── Carga inicial ────────────────────────────────────────────────────────────

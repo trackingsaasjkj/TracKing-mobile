@@ -72,7 +72,7 @@ function SummaryCard({
           : 'Sin liquidaciones aún'}
       </Text>
       <Text style={[summaryStyles.amount, { color: colors.white }]}>
-        {formatCurrency(lastSettlement?.total_earned ?? 0)}
+        {formatCurrency(lastSettlement?.courier_payment ?? 0)}
       </Text>
 
       {lastSettlement && (
@@ -183,7 +183,7 @@ const kpiStyles = StyleSheet.create({
 function SettlementRow({ item, index, onPress }: { item: Settlement; index: number; onPress: () => void }) {
   const { colors } = useTheme();
   const avgPerService =
-    item.total_services > 0 ? item.total_earned / item.total_services : 0;
+    item.total_services > 0 ? item.courier_payment / item.total_services : 0;
 
   return (
     <TouchableOpacity
@@ -211,7 +211,7 @@ function SettlementRow({ item, index, onPress }: { item: Settlement; index: numb
 
       <View style={rowStyles.right}>
         <Text style={[rowStyles.amount, { color: colors.success }]}>
-          {formatCurrency(item.total_earned)}
+          {formatCurrency(item.courier_payment)}
         </Text>
         <Text style={[rowStyles.chevron, { color: colors.neutral400 }]}>›</Text>
       </View>
@@ -309,7 +309,7 @@ export function EarningsScreen() {
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} onRetry={refresh} />;
 
-  const totalEarned = summary?.total_earned ?? 0;
+  const totalEarned = summary?.courier_payment ?? 0;
   const totalServices = summary?.total_services ?? 0;
   const totalSettlements = summary?.total_settlements ?? 0;
 

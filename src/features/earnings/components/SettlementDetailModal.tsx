@@ -224,7 +224,7 @@ export function SettlementDetailModal({ settlement, visible, onClose }: Props) {
         <View style={[styles.strip, { backgroundColor: colors.primary }]}>
           <View style={styles.stripItem}>
             <Text style={[styles.stripValue, { color: colors.white }]}>
-              {formatCurrency(settlement.total_earned)}
+              {formatCurrency(settlement.courier_payment)}
             </Text>
             <Text style={[styles.stripLabel, { color: colors.white }]}>Total ganado</Text>
           </View>

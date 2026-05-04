@@ -33,8 +33,16 @@ export function useWorkday(): UseWorkdayReturn {
     try {
       await workdayApi.start();
       setOperationalStatus('AVAILABLE');
+      
       // Start background location for the entire workday — runs even when app is closed
-      await startWorkdayTracking();
+      const trackingResult = await startWorkdayTracking();
+      if (!trackingResult.success) {
+        console.warn('[useWorkday] Background tracking failed:', trackingResult.reason);
+        // Still return ok=true because the workday started, but log the tracking issue
+        // The user should see a warning about the tracking permission
+        return { ok: true };
+      }
+      
       return { ok: true };
     } catch (err: any) {
       return { ok: false, error: err?.userMessage ?? 'No se pudo iniciar la jornada' };

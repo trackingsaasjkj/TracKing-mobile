@@ -124,7 +124,7 @@ Todos los servicios API del mobile usan `unwrap()` para extraer el dato real.
 El backend retorna el `accessToken` tanto en el body del login como en una cookie httpOnly. El mobile almacena el token del body en `expo-secure-store` para persistencia entre sesiones. Las cookies se envían automáticamente con `withCredentials: true`.
 
 **2. KPIs calculados localmente**
-No existe un endpoint `/api/kpis` en el backend. Los KPIs de pendientes y completados se calculan en el frontend a partir de la lista de servicios. Las ganancias se derivan sumando `total_earned` de las liquidaciones.
+No existe un endpoint `/api/kpis` en el backend. Los KPIs de pendientes y completados se calculan en el frontend a partir de la lista de servicios. Las ganancias se derivan sumando `courier_payment` de las liquidaciones.
 
 **3. Ganancias para rol COURIER**
 Los endpoints `/api/liquidations/earnings` y `/api/liquidations` requieren rol `ADMIN`. Para el rol `COURIER` retornan `403`. Se maneja con `Promise.allSettled` mostrando los datos si están disponibles o `0` si no hay acceso.
@@ -291,7 +291,7 @@ El backend puede retornar `operational_status: 'IN_SERVICE'` para mensajeros en 
 
 **Causa raíz:** Restricción de permisos del backend — no modificable.
 
-**Solución:** Se usa `Promise.allSettled` en lugar de `Promise.all`. Si ambas llamadas fallan, se muestra el error. Si alguna tiene éxito, se muestran los datos disponibles. En `useDashboard`, las ganancias se calculan sumando `total_earned` de las liquidaciones con un `try/catch` silencioso.
+**Solución:** Se usa `Promise.allSettled` en lugar de `Promise.all`. Si ambas llamadas fallan, se muestra el error. Si alguna tiene éxito, se muestran los datos disponibles. En `useDashboard`, las ganancias se calculan sumando `courier_payment` de las liquidaciones con un `try/catch` silencioso.
 
 **Archivos modificados:**
 - `src/features/earnings/hooks/useEarnings.ts`

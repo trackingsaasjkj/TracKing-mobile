@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useServicesStore } from '@/features/services/store/servicesStore';
 import { useWorkdayTracking } from '@/features/tracking/hooks/useWorkdayTracking';
@@ -33,8 +34,29 @@ export function useWorkday(): UseWorkdayReturn {
     try {
       await workdayApi.start();
       setOperationalStatus('AVAILABLE');
+      
       // Start background location for the entire workday — runs even when app is closed
-      await startWorkdayTracking();
+      const trackingResult = await startWorkdayTracking();
+      if (!trackingResult.success) {
+        console.warn('[useWorkday] Background tracking failed:', trackingResult.reason);
+        // Workday started on the server but background tracking is broken.
+        // Rollback the workday on the server to keep state consistent,
+        // then inform the user so they can fix their location permission.
+        try { await workdayApi.end(); } catch { /* best-effort rollback */ }
+        setOperationalStatus('UNAVAILABLE');
+        const reason = trackingResult.reason ?? 'Permiso de ubicación en segundo plano denegado.';
+        Alert.alert(
+          'Permiso requerido',
+          `Para iniciar la jornada necesitas dar permiso de ubicación "Permitir todo el tiempo".
+
+Ve a: Configuración → Apps → TracKing → Permisos → Ubicación → Permitir todo el tiempo
+
+${reason}`,
+          [{ text: 'Entendido', style: 'default' }],
+        );
+        return { ok: false, error: 'Permiso de ubicación en segundo plano requerido.' };
+      }
+
       return { ok: true };
     } catch (err: any) {
       return { ok: false, error: err?.userMessage ?? 'No se pudo iniciar la jornada' };

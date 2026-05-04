@@ -1,9 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import * as ExpoLocation from 'expo-location';
 import { locationApi } from '../api/locationApi';
-import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
 import { useTrackingStore } from '../store/trackingStore';
-import { colors } from '@/shared/ui/colors';
 
 const INTERVAL_MS = 15_000;
 
@@ -19,28 +17,32 @@ export interface LocationState {
 }
 
 /**
- * Manages foreground + background location tracking.
+ * Manages FOREGROUND-only location tracking (the 15s setInterval).
+ *
+ * Background tracking is handled exclusively by workdayBackgroundTask
+ * (WORKDAY_BACKGROUND_TASK) which starts when the courier begins their
+ * shift and runs for the entire shift duration, even when the app is
+ * minimized or closed.
+ *
+ * This hook is intentionally simplified — it no longer starts its own
+ * background task (BACKGROUND_LOCATION_TASK) to avoid running two
+ * simultaneous ForegroundServices on Android, which can cause conflicts
+ * on some devices. The workday task already covers the IN_SERVICE period.
  *
  * Lifecycle:
- *   active=true  → request permissions → start background task → start foreground interval
- *   active=false → stop background task → clear foreground interval
+ *   active=true  → request foreground permission → start 15s interval
+ *   active=false → clear interval → clear coords from store
  *
- * Coords are written to useTrackingStore so any screen can read them without
- * calling this hook a second time. Calling this hook twice with active=true
- * would create two foreground intervals — avoid that by using useTrackingCoords
- * in components that only need to read the current position.
+ * Coords are written to useTrackingStore so any screen can read them
+ * without calling this hook a second time.
  *
  * Error handling:
  *   - Backend 400 → stop tracking (courier left IN_SERVICE state)
  *   - Network / GPS errors → swallowed silently (must not interrupt courier flow)
- *
- * Background task is defined in tasks/backgroundLocationTask.ts and registered
- * in index.ts before the React tree mounts.
  */
 export function useLocation({ active }: UseLocationOptions): LocationState {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const foregroundGranted = useRef(false);
-  const backgroundGranted = useRef(false);
   const stoppedByBackend = useRef(false);
 
   const setCoords = useTrackingStore((s) => s.setCoords);
@@ -50,7 +52,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
   const longitude = useTrackingStore((s) => s.longitude);
   const permissionDenied = useTrackingStore((s) => s.permissionDenied);
 
-  // ── Permission helpers ────────────────────────────────────────────────────
+  // ── Permission helper ─────────────────────────────────────────────────────
 
   const requestForegroundPermission = useCallback(async (): Promise<boolean> => {
     if (foregroundGranted.current) return true;
@@ -60,14 +62,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
     return foregroundGranted.current;
   }, [setPermissionDenied]);
 
-  const requestBackgroundPermission = useCallback(async (): Promise<boolean> => {
-    if (backgroundGranted.current) return true;
-    const { status } = await ExpoLocation.requestBackgroundPermissionsAsync();
-    backgroundGranted.current = status === 'granted';
-    return backgroundGranted.current;
-  }, []);
-
-  // ── Stop helpers ──────────────────────────────────────────────────────────
+  // ── Stop helper ───────────────────────────────────────────────────────────
 
   const stopForeground = useCallback(() => {
     if (intervalRef.current) {
@@ -75,22 +70,6 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
       intervalRef.current = null;
     }
   }, []);
-
-  const stopBackground = useCallback(async () => {
-    try {
-      const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-      if (isRunning) {
-        await ExpoLocation.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-      }
-    } catch {
-      // Ignore — task may not be registered in Expo Go dev mode
-    }
-  }, []);
-
-  const stopAll = useCallback(async () => {
-    stopForeground();
-    await stopBackground();
-  }, [stopForeground, stopBackground]);
 
   // ── Send location (foreground) ────────────────────────────────────────────
 
@@ -105,7 +84,7 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
         accuracy: ExpoLocation.Accuracy.Balanced,
       });
 
-      // Write to shared store — TrackingScreen and ServiceDetailScreen both read from there
+      // Write to shared store — HomeScreen and ServiceDetailScreen both read from there
       setCoords(loc.coords.latitude, loc.coords.longitude);
 
       await locationApi.send({
@@ -116,41 +95,13 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
       });
     } catch (err: any) {
       if (err?.response?.status === 400) {
-        // Backend says courier is not IN_SERVICE — stop tracking
+        // Backend says courier is not IN_SERVICE — stop foreground tracking
         stoppedByBackend.current = true;
         stopForeground();
-        await stopBackground();
       }
       // All other errors (network, GPS) are swallowed silently
     }
-  }, [requestForegroundPermission, setCoords, stopForeground, stopBackground]);
-
-  // ── Start background task ─────────────────────────────────────────────────
-
-  const startBackground = useCallback(async () => {
-    try {
-      const hasBackground = await requestBackgroundPermission();
-      if (!hasBackground) return;
-
-      const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(BACKGROUND_LOCATION_TASK);
-      if (isRunning) return; // already running — guard against double registration
-
-      await ExpoLocation.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-        accuracy: ExpoLocation.Accuracy.Balanced,
-        timeInterval: INTERVAL_MS,
-        distanceInterval: 10,
-        showsBackgroundLocationIndicator: true, // iOS: blue bar
-        foregroundService: {
-          // Android 8+: required persistent notification for background location
-          notificationTitle: 'Tracking activo',
-          notificationBody: 'Tu ubicación está siendo compartida durante el servicio.',
-          notificationColor: colors.primary,
-        },
-      });
-    } catch {
-      // expo-task-manager is not available in Expo Go — foreground-only fallback
-    }
-  }, [requestBackgroundPermission]);
+  }, [requestForegroundPermission, setCoords, stopForeground]);
 
   // ── Effect: start/stop based on active flag ───────────────────────────────
 
@@ -158,23 +109,21 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
     if (!active) {
       stoppedByBackend.current = false;
       clearCoords();
-      stopAll();
+      stopForeground();
       return;
     }
 
     stoppedByBackend.current = false;
 
-    // Start background task first (persists when app is minimized)
-    startBackground();
-
     // Foreground: send immediately, then every 15s
+    // Background is handled by WORKDAY_BACKGROUND_TASK (started at shift start)
     sendLocation();
     intervalRef.current = setInterval(sendLocation, INTERVAL_MS);
 
     return () => {
-      stopAll();
+      stopForeground();
     };
-  }, [active, sendLocation, startBackground, stopAll, clearCoords]);
+  }, [active, sendLocation, stopForeground, clearCoords]);
 
   return { latitude, longitude, permissionDenied };
 }

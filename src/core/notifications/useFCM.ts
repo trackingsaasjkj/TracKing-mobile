@@ -44,11 +44,13 @@ export function useFCM() {
       if (token && !tokenRegistered.current) {
         await registerTokenInBackend(token);
         tokenRegistered.current = true;
+      } else if (!token) {
+        console.warn('[FCM] No token available to register');
       }
 
       // 3. Escuchar refrescos de token
       unsubscribeTokenRefresh = onTokenRefresh(async (newToken) => {
-        console.log('[FCM] Token refrescado');
+        console.log('[FCM] Token refrescado:', newToken);
         await registerTokenInBackend(newToken);
       });
 
@@ -85,7 +87,7 @@ export function useFCM() {
 async function registerTokenInBackend(token: string): Promise<void> {
   try {
     await apiClient.post('/api/notifications/fcm-token', { token });
-    console.log('[FCM] Token registrado en backend');
+    console.log('[FCM] Token registrado en backend:', token.substring(0, 20) + '...');
   } catch (error) {
     console.error('[FCM] Error registrando token en backend:', error);
   }

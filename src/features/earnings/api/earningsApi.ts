@@ -4,7 +4,9 @@ export interface Settlement {
   id: string;
   courier_id: string;
   company_id: string;
-  total_earned: number;
+  total_collected: number;
+  company_commission: number;
+  courier_payment: number;
   total_services: number;
   start_date: string;
   end_date: string;
@@ -14,7 +16,7 @@ export interface Settlement {
 export interface EarningsSummary {
   total_settlements: number;
   total_services: number;
-  total_earned: number;
+  courier_payment: number;
   /** Full list of settlements included in the summary */
   settlements: Settlement[];
 }

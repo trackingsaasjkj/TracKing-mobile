@@ -20,12 +20,22 @@ export async function requestNotificationPermission(): Promise<boolean> {
     console.log('[FCM Mock] requestNotificationPermission → true');
     return true;
   }
-  const messaging = getMessaging();
-  const authStatus = await messaging().requestPermission();
-  return (
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL
-  );
+  try {
+    const messaging = getMessaging();
+    const authStatus = await messaging().requestPermission();
+    const granted =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    if (!granted) {
+      console.warn('[FCM] Notification permission denied. Status:', authStatus);
+    } else {
+      console.log('[FCM] Notification permission granted');
+    }
+    return granted;
+  } catch (error) {
+    console.error('[FCM] Error requesting notification permission:', error);
+    return false;
+  }
 }
 
 /**
@@ -38,6 +48,11 @@ export async function getFCMToken(): Promise<string | null> {
   }
   try {
     const token = await getMessaging()().getToken();
+    if (token) {
+      console.log('[FCM] Token obtained successfully');
+    } else {
+      console.warn('[FCM] No token returned from Firebase');
+    }
     return token;
   } catch (error) {
     console.error('[FCM] Error obteniendo token:', error);
@@ -90,9 +105,14 @@ export function setBackgroundMessageHandler(): void {
     console.log('[FCM Mock] setBackgroundMessageHandler → no-op (Expo Go)');
     return;
   }
-  getMessaging()().setBackgroundMessageHandler(async (remoteMessage) => {
-    console.log('[FCM] Mensaje en background:', remoteMessage);
-  });
+  try {
+    getMessaging()().setBackgroundMessageHandler(async (remoteMessage) => {
+      console.log('[FCM] Background message received:', remoteMessage);
+    });
+    console.log('[FCM] Background message handler registered successfully');
+  } catch (error) {
+    console.error('[FCM] Error setting background message handler:', error);
+  }
 }
 
 /**

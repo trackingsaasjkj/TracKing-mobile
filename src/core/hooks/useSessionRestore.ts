@@ -43,7 +43,7 @@ async function restoreWorkdayTracking(): Promise<void> {
     await ExpoLocation.startLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK, {
       accuracy: ExpoLocation.Accuracy.Balanced,
       timeInterval: 15_000,
-      distanceInterval: 10,
+      distanceInterval: 0,    // no distance threshold — rely only on timeInterval
       showsBackgroundLocationIndicator: true,
       foregroundService: {
         notificationTitle: 'Jornada activa',

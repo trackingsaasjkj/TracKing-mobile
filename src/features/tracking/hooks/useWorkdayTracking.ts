@@ -23,8 +23,11 @@ export interface WorkdayTrackingResult {
 export function useWorkdayTracking() {
   const startWorkdayTracking = useCallback(async (): Promise<WorkdayTrackingResult> => {
     try {
+      console.log('[WorkdayTracking] Starting workday tracking...');
+
       // Ensure foreground permission first (required before background)
       const { status: fgStatus } = await ExpoLocation.requestForegroundPermissionsAsync();
+      console.log('[WorkdayTracking] Foreground permission status:', fgStatus);
       if (fgStatus !== 'granted') {
         console.warn('[WorkdayTracking] Foreground location permission denied');
         return { success: false, reason: 'Permiso de ubicación denegado' };
@@ -32,6 +35,7 @@ export function useWorkdayTracking() {
 
       // Request background permission (ACCESS_BACKGROUND_LOCATION on Android)
       const { status: bgStatus } = await ExpoLocation.requestBackgroundPermissionsAsync();
+      console.log('[WorkdayTracking] Background permission status:', bgStatus);
       if (bgStatus !== 'granted') {
         console.warn('[WorkdayTracking] Background location permission denied');
         return {

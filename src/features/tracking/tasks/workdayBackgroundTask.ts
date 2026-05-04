@@ -1,5 +1,6 @@
 import * as TaskManager from 'expo-task-manager';
 import * as ExpoLocation from 'expo-location';
+import { Platform } from 'react-native';
 import { locationApi } from '../api/locationApi';
 
 export const WORKDAY_BACKGROUND_TASK = 'workday-background-location';
@@ -28,10 +29,12 @@ TaskManager.defineTask(
     data,
     error,
   }: TaskManager.TaskManagerTaskBody<{ locations: ExpoLocation.LocationObject[] }>) => {
-    console.log('[WorkdayTracking] Background task triggered');
+    const timestamp = new Date().toISOString();
+    console.log(`[WorkdayTracking] Background task triggered at ${timestamp}`);
+    console.log(`[WorkdayTracking] Platform: ${Platform.OS}`);
 
     if (error) {
-      console.error('[WorkdayTracking] Task error:', error.message);
+      console.error(`[WorkdayTracking] Task error: ${error.message}`);
       return;
     }
 
@@ -41,7 +44,12 @@ TaskManager.defineTask(
     }
 
     const { latitude, longitude, accuracy } = data.locations[0].coords;
-    console.log('[WorkdayTracking] Location received:', { latitude, longitude, accuracy });
+    console.log('[WorkdayTracking] Location received:', {
+      latitude: latitude.toFixed(6),
+      longitude: longitude.toFixed(6),
+      accuracy: accuracy?.toFixed(2),
+      timestamp,
+    });
 
     try {
       await locationApi.sendFromBackground({
@@ -49,11 +57,12 @@ TaskManager.defineTask(
         longitude,
         ...(accuracy != null && { accuracy }),
       });
-      console.log('[WorkdayTracking] Location sent successfully');
+      console.log(`[WorkdayTracking] Location sent successfully at ${timestamp}`);
     } catch (err: any) {
       console.error('[WorkdayTracking] Error sending location:', {
         status: err?.status,
         message: err?.message,
+        timestamp,
       });
 
       // 401 = session expired — stop the task

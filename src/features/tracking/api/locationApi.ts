@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
 import { secureStorage } from '@/core/storage/secureStorage';
 
@@ -20,18 +20,28 @@ export const locationApi = {
 
   /**
    * Background: reads token directly from SecureStore.
-   * Used by backgroundLocationTask where the Zustand store may not be initialized.
+   * Usamos fetch en lugar de axios porque XMLHttpRequest (que usa axios)
+   * puede ser inestable en contextos Headless JS (segundo plano) en Android.
    */
   sendFromBackground: async (payload: LocationPayload): Promise<void> => {
     const token = await secureStorage.getToken();
     if (!token) return; // no session — skip silently
 
-    await axios.post(`${BASE_URL}/api/courier/location`, payload, {
+    const response = await fetch(`${BASE_URL}/api/courier/location`, {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      timeout: 10_000,
+      body: JSON.stringify(payload),
     });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        const error = new Error('Unauthorized');
+        (error as any).status = 401;
+        throw error;
+      }
+    }
   },
 };

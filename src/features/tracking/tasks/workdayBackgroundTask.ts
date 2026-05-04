@@ -44,7 +44,7 @@ TaskManager.defineTask(
       });
     } catch (err: any) {
       // 401 = session expired — stop the task
-      if (err?.response?.status === 401) {
+      if (err?.status === 401 || err?.response?.status === 401) {
         const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
           WORKDAY_BACKGROUND_TASK,
         ).catch(() => false);

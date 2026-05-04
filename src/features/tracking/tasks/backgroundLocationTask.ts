@@ -5,8 +5,19 @@ import { locationApi } from '../api/locationApi';
 export const BACKGROUND_LOCATION_TASK = 'tracking-background-location';
 
 /**
- * Background location task — must be defined at module level (outside any component).
- * Registered in index.ts so it's available before the React tree mounts.
+ * @deprecated Este task ya NO es iniciado por useLocation.
+ *
+ * El tracking en segundo plano para la jornada completa (incluyendo el
+ * período IN_SERVICE) es manejado exclusivamente por WORKDAY_BACKGROUND_TASK
+ * (workdayBackgroundTask.ts), que se inicia al comenzar la jornada y corre
+ * durante todo el turno, incluso con la app cerrada.
+ *
+ * Este task se mantiene definido aquí SOLO por compatibilidad con dispositivos
+ * que puedan tenerlo registrado de versiones anteriores del APK. No será
+ * iniciado por ningún componente nuevo.
+ *
+ * Si en el futuro se desea un tracking más granular IN_SERVICE (e.g. mayor
+ * frecuencia), se puede reactivar desde useLocation.ts.
  *
  * Rules:
  * - Uses sendFromBackground() which reads the token directly from SecureStore,

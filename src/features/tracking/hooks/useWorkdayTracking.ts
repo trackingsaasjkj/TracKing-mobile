@@ -52,7 +52,7 @@ export function useWorkdayTracking() {
       await ExpoLocation.startLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK, {
         accuracy: ExpoLocation.Accuracy.Balanced,
         timeInterval: 15_000,   // every 15 seconds
-        distanceInterval: 10,   // or every 10 meters
+        distanceInterval: 0,    // no distance threshold — rely only on timeInterval
         showsBackgroundLocationIndicator: true,
         foregroundService: {
           notificationTitle: 'Jornada activa',

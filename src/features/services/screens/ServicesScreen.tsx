@@ -7,6 +7,7 @@ import type { View as RNView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -21,9 +22,9 @@ type Nav = NativeStackNavigationProp<ServicesStackParamList, 'ServicesList'>;
 
 type MenuKey = 'completed' | 'history';
 
-const MENU_OPTIONS: { key: MenuKey; label: string; icon: string }[] = [
-  { key: 'completed', label: 'Completados', icon: '✅' },
-  { key: 'history', label: 'Historial', icon: '📋' },
+const MENU_OPTIONS: { key: MenuKey; label: string; iconName: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'completed', label: 'Completados', iconName: 'checkmark-circle-outline' },
+  { key: 'history',   label: 'Historial',   iconName: 'time-outline' },
 ];
 
 export function ServicesScreen() {
@@ -116,7 +117,7 @@ export function ServicesScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📦</Text>
+            <Ionicons name="cube-outline" size={40} color={colors.neutral400} />
             <Text style={[styles.emptyText, { color: colors.neutral400 }]}>
               {showCompleted ? 'Sin pedidos completados hoy' : 'Sin pedidos activos'}
             </Text>
@@ -147,7 +148,11 @@ export function ServicesScreen() {
                 onPress={() => selectMenuOption(option.key)}
                 activeOpacity={0.7}
               >
-                <Text style={styles.menuItemIcon}>{option.icon}</Text>
+                <Ionicons
+                  name={option.iconName}
+                  size={16}
+                  color={option.key === 'completed' && showCompleted ? colors.primary : colors.neutral600}
+                />
                 <Text style={[
                   styles.menuItemText,
                   { color: option.key === 'completed' && showCompleted ? colors.primary : colors.neutral800 },
@@ -194,11 +199,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     paddingHorizontal: spacing.lg, paddingVertical: spacing.md,
   },
-  menuItemIcon: { fontSize: 16 },
   menuItemText: { fontSize: fontSize.sm },
   // List
   list: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   empty: { alignItems: 'center', paddingTop: spacing.huge, gap: spacing.md },
-  emptyIcon: { fontSize: 40 },
   emptyText: { fontSize: fontSize.sm },
 });

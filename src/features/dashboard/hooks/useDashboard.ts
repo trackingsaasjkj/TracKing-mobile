@@ -3,6 +3,7 @@ import { dashboardApi } from '../api/dashboardApi';
 import { earningsApi } from '@/features/earnings/api/earningsApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useServicesStore } from '@/features/services/store/servicesStore';
+import { useDashboardUpdates } from './useDashboardUpdates';
 import type { KPISummary } from '../types/dashboard.types';
 import type { Service } from '@/features/services/types/services.types';
 
@@ -71,6 +72,9 @@ export function useDashboard(): DashboardState {
   }, [fetchData]);
 
   const refresh = useCallback(() => fetchData(true), [fetchData]);
+
+  // Re-fetch when a new service is assigned via WebSocket
+  useDashboardUpdates(refresh);
 
   // All services the courier needs to act on today
   const activeServices = services.filter(

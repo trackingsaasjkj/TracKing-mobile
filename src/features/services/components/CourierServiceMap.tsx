@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Linking, Alert } from 'react-native';
 import { WebView } from 'react-native-webview';
 import type WebViewType from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
@@ -127,7 +128,7 @@ export function CourierServiceMap({
           activeOpacity={0.85}
           onPress={() => openInGoogleMaps(originLat, originLng, destinationLat, destinationLng)}
         >
-          <Text style={styles.navIcon}>🗺️</Text>
+          <Ionicons name="map-outline" size={13} color={colors.neutral800} />
           <Text style={[styles.navLabel, { color: colors.neutral800 }]}>Maps</Text>
         </TouchableOpacity>
 
@@ -136,7 +137,7 @@ export function CourierServiceMap({
           activeOpacity={0.85}
           onPress={() => openInWaze(destinationLat, destinationLng)}
         >
-          <Text style={styles.navIcon}>🚗</Text>
+          <Ionicons name="navigate-outline" size={13} color={colors.neutral800} />
           <Text style={[styles.navLabel, { color: colors.neutral800 }]}>Waze</Text>
         </TouchableOpacity>
       </View>
@@ -299,6 +300,5 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 4,
   },
-  navIcon: { fontSize: 13 },
   navLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
 });

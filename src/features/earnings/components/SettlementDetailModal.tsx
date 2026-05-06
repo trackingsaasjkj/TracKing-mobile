@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -88,12 +89,16 @@ function ServiceItem({ item, index }: { item: Service; index: number }) {
       <View style={[itemStyles.divider, { backgroundColor: colors.neutral200 }]} />
 
       <View style={itemStyles.meta}>
-        <Text style={[itemStyles.metaText, { color: colors.neutral500 }]}>
-          📍 {item.origin_address}
-        </Text>
-        <Text style={[itemStyles.metaText, { color: colors.neutral500 }]}>
-          👤 {item.destination_name} · {PAYMENT_LABEL[item.payment_method] ?? item.payment_method}
-        </Text>
+        <View style={itemStyles.metaRow}>
+          <Ionicons name="location-outline" size={12} color={colors.neutral500} />
+          <Text style={[itemStyles.metaText, { color: colors.neutral500 }]}>{item.origin_address}</Text>
+        </View>
+        <View style={itemStyles.metaRow}>
+          <Ionicons name="person-outline" size={12} color={colors.neutral500} />
+          <Text style={[itemStyles.metaText, { color: colors.neutral500 }]}>
+            {item.destination_name} · {PAYMENT_LABEL[item.payment_method] ?? item.payment_method}
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -121,7 +126,8 @@ const itemStyles = StyleSheet.create({
   price: { fontSize: fontSize.md, fontWeight: fontWeight.bold },
   divider: { height: 1, marginVertical: spacing.sm },
   meta: { gap: 3 },
-  metaText: { fontSize: fontSize.xs },
+  metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { fontSize: fontSize.xs, flex: 1 },
 });
 
 // ─── Main modal ───────────────────────────────────────────────────────────────
@@ -254,7 +260,7 @@ export function SettlementDetailModal({ settlement, visible, onClose }: Props) {
           </View>
         ) : error ? (
           <View style={styles.center}>
-            <Text style={styles.errorIcon}>⚠️</Text>
+            <Ionicons name="warning-outline" size={32} color={colors.warning} />
             <Text style={[styles.errorText, { color: colors.neutral500 }]}>{error}</Text>
             <TouchableOpacity
               onPress={() => fetchServices(settlement)}
@@ -279,7 +285,7 @@ export function SettlementDetailModal({ settlement, visible, onClose }: Props) {
             }
             ListEmptyComponent={
               <View style={styles.center}>
-                <Text style={styles.emptyIcon}>📦</Text>
+                <Ionicons name="cube-outline" size={40} color={colors.neutral400} />
                 <Text style={[styles.emptyText, { color: colors.neutral500 }]}>
                   No se encontraron servicios en el historial para este período.
                 </Text>
@@ -339,7 +345,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   loadingText: { fontSize: fontSize.sm },
-  errorIcon: { fontSize: 32 },
   errorText: { fontSize: fontSize.sm, textAlign: 'center' },
   retryBtn: {
     paddingHorizontal: spacing.xl,
@@ -347,6 +352,5 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.md,
   },
   retryText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
-  emptyIcon: { fontSize: 40 },
   emptyText: { fontSize: fontSize.sm, textAlign: 'center', lineHeight: 20 },
 });

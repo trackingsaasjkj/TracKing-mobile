@@ -10,6 +10,7 @@ import {
   TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -83,7 +84,11 @@ export function WorkdayScreen() {
       <View style={[styles.settingsCard, { backgroundColor: colors.surface, shadowColor: colors.black }, shadows.sm]}>
         <View style={styles.settingRow}>
           <View style={styles.settingLeft}>
-            <Text style={styles.settingIcon}>{isDark ? '🌙' : '☀️'}</Text>
+            <Ionicons
+              name={isDark ? 'moon-outline' : 'sunny-outline'}
+              size={22}
+              color={colors.primary}
+            />
             <View>
               <Text style={[styles.settingLabel, { color: colors.neutral800 }]}>Modo oscuro</Text>
               <Text style={[styles.settingDesc, { color: colors.neutral500 }]}>
@@ -102,9 +107,12 @@ export function WorkdayScreen() {
 
       {/* ── Map city config ── */}
       <View style={[styles.settingsCard, { backgroundColor: colors.surface, shadowColor: colors.black }, shadows.sm]}>
-        <Text style={[styles.settingLabel, { color: colors.neutral800, marginBottom: spacing.xs }]}>
-          🗺️  Ciudad por defecto del mapa
-        </Text>
+        <View style={styles.settingLabelRow}>
+          <Ionicons name="map-outline" size={20} color={colors.primary} />
+          <Text style={[styles.settingLabel, { color: colors.neutral800 }]}>
+            Ciudad por defecto del mapa
+          </Text>
+        </View>
         <Text style={[styles.settingDesc, { color: colors.neutral500, marginBottom: spacing.sm }]}>
           Actual: {mapDefaults.label}
         </Text>
@@ -174,7 +182,7 @@ const styles = StyleSheet.create({
   },
   settingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  settingIcon: { fontSize: 22 },
+  settingLabelRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.xs },
   settingLabel: { fontSize: fontSize.md, fontWeight: fontWeight.medium },
   settingDesc: { fontSize: fontSize.xs, marginTop: 1 },
   logoutBtn: {

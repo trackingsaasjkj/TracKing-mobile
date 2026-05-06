@@ -11,6 +11,39 @@ List and detail screens for the courier's assigned services. Displays status bad
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/courier/services` | List assigned services |
+| GET | `/api/courier/services/:id` | Service detail |
+| POST | `/api/courier/services/:id/status` | Update service status |
+
+---
+
+## Real-time Updates
+
+Services are kept in sync via a three-layer strategy:
+
+| Layer | Mechanism | Latency | When active |
+|-------|-----------|---------|-------------|
+| 1 | WebSocket (`/services` namespace) | < 50ms | App in foreground |
+| 2 | FCM push notification | ~1–3s | App in background / killed |
+| 3 | Polling (`useAutoRefresh`) | 45s | Fallback when WS unavailable |
+
+The hook `useServiceUpdates()` manages layers 1 and 2. It is mounted once inside `useServices()`.
+
+```
+useServices()
+  └── useServiceUpdates()
+        ├── wsClient.connect(token)
+        ├── wsClient.on('service:updated')  → updateService() + setQueryData()
+        ├── wsClient.on('service:assigned') → addService() + invalidateQueries()
+        └── onServiceUpdateMessage() [FCM foreground]
+```
+
+### WebSocket events
+
+| Event | Payload | Action |
+|-------|---------|--------|
+| `service:updated` | `Service` object | Updates service in store + React Query cache |
+| `service:assigned` | `Service` object | Adds service to store + invalidates list query |
+| `connection:ack` | `{ courierId, timestamp }` | Resets reconnect counter |
 
 ---
 
@@ -39,7 +72,9 @@ src/features/services/
 ├── components/
 │   ├── ServiceCard.tsx
 │   └── StatusBadge.tsx
-├── hooks/useServices.ts
+├── hooks/
+│   ├── useServices.ts          ← useServices + useServiceDetail
+│   └── useServiceUpdates.ts   ← WS + FCM real-time sync
 ├── screens/
 │   ├── ServicesScreen.tsx
 │   └── ServiceDetailScreen.tsx
@@ -51,9 +86,11 @@ src/features/services/
 
 ## Completion Criteria
 
-- [ ] Service list fetched and displayed
-- [ ] Each card shows ID, origin, destination, customer, price, status badge
-- [ ] Tap navigates to detail screen
-- [ ] Detail shows full service info
-- [ ] Pull-to-refresh works
-- [ ] Error state with retry button
+- [x] Service list fetched and displayed
+- [x] Each card shows ID, origin, destination, customer, price, status badge
+- [x] Tap navigates to detail screen
+- [x] Detail shows full service info
+- [x] Pull-to-refresh works
+- [x] Error state with retry button
+- [x] Real-time updates via WebSocket (service:updated, service:assigned)
+- [x] FCM fallback when app is in background

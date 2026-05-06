@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 import { earningsApi } from '../api/earningsApi';
+import { useEarningsUpdates } from './useEarningsUpdates';
 
 /**
  * Fetches earnings summary from GET /api/courier/settlements/earnings.
@@ -21,6 +22,9 @@ export function useEarnings() {
   const refresh = useCallback(() => {
     queryClient.invalidateQueries({ queryKey: ['courier-earnings'] });
   }, [queryClient]);
+
+  // Invalidate cache when backend emits settlement:created via WebSocket
+  useEarningsUpdates();
 
   return {
     summary: query.data ?? null,

@@ -2,29 +2,18 @@ import React from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Linking, Clipboard, Alert,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 
 interface PhoneActionsProps {
   phone: string;
-  /** Show the phone number as a label above the action buttons */
   showLabel?: boolean;
 }
 
-/**
- * Renders three quick-action buttons for a phone number:
- *   📋 Copy   — copies the number to clipboard
- *   📞 Call   — opens the native dialer
- *   💬 WhatsApp — opens WhatsApp chat (wa.me deep link)
- *
- * Strips all non-digit characters before building URLs so numbers
- * like "+57 310 123 4567" or "310-123-4567" work correctly.
- */
 export function PhoneActions({ phone, showLabel = true }: PhoneActionsProps) {
   const { colors } = useTheme();
-
-  // Keep only digits and leading + for international format
   const clean = phone.replace(/[^\d+]/g, '');
 
   const handleCopy = () => {
@@ -39,7 +28,6 @@ export function PhoneActions({ phone, showLabel = true }: PhoneActionsProps) {
   };
 
   const handleWhatsApp = () => {
-    // wa.me expects digits only, no + prefix
     const digits = clean.replace(/^\+/, '');
     Linking.openURL(`https://wa.me/${digits}`).catch(() =>
       Alert.alert('Error', 'No se pudo abrir WhatsApp'),
@@ -52,22 +40,44 @@ export function PhoneActions({ phone, showLabel = true }: PhoneActionsProps) {
         <Text style={[styles.phoneLabel, { color: colors.neutral600 }]}>{phone}</Text>
       )}
       <View style={styles.row}>
-        <ActionBtn icon="📋" label="Copiar" onPress={handleCopy} bg={colors.neutral100} color={colors.neutral700} />
-        <ActionBtn icon="📞" label="Llamar" onPress={handleCall} bg={colors.primaryBg} color={colors.primary} />
-        <ActionBtn icon="💬" label="WhatsApp" onPress={handleWhatsApp} bg="#E7F9EE" color="#25D366" />
+        <ActionBtn
+          iconName="copy-outline"
+          label="Copiar"
+          onPress={handleCopy}
+          bg={colors.neutral100}
+          color={colors.neutral700}
+        />
+        <ActionBtn
+          iconName="call-outline"
+          label="Llamar"
+          onPress={handleCall}
+          bg={colors.primaryBg}
+          color={colors.primary}
+        />
+        <ActionBtn
+          iconName="logo-whatsapp"
+          label="WhatsApp"
+          onPress={handleWhatsApp}
+          bg="#E7F9EE"
+          color="#25D366"
+        />
       </View>
     </View>
   );
 }
 
 function ActionBtn({
-  icon, label, onPress, bg, color,
+  iconName, label, onPress, bg, color,
 }: {
-  icon: string; label: string; onPress: () => void; bg: string; color: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  bg: string;
+  color: string;
 }) {
   return (
     <TouchableOpacity style={[styles.btn, { backgroundColor: bg }]} onPress={onPress} activeOpacity={0.75}>
-      <Text style={styles.btnIcon}>{icon}</Text>
+      <Ionicons name={iconName} size={14} color={color} />
       <Text style={[styles.btnLabel, { color }]}>{label}</Text>
     </TouchableOpacity>
   );
@@ -90,6 +100,5 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
   },
-  btnIcon: { fontSize: 14 },
   btnLabel: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold },
 });

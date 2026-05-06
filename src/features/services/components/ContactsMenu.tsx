@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -74,7 +75,7 @@ export function ContactsMenu({
             {customerPhone && (
               <View style={[styles.section, { borderColor: colors.neutral100 }]}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionIcon}>👤</Text>
+                  <Ionicons name="person-outline" size={22} color={colors.primary} />
                   <View>
                     <Text style={[styles.sectionRole, { color: colors.neutral500 }]}>Cliente</Text>
                     <Text style={[styles.sectionName, { color: colors.neutral800 }]}>{customerName}</Text>
@@ -88,7 +89,7 @@ export function ContactsMenu({
             {recipientPhone && (
               <View style={[styles.section, { borderColor: colors.neutral100 }]}>
                 <View style={styles.sectionHeader}>
-                  <Text style={styles.sectionIcon}>📦</Text>
+                  <Ionicons name="cube-outline" size={22} color={colors.primary} />
                   <View>
                     <Text style={[styles.sectionRole, { color: colors.neutral500 }]}>Quien recibe</Text>
                     <Text style={[styles.sectionName, { color: colors.neutral800 }]}>{recipientName}</Text>
@@ -147,7 +148,6 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.xs,
   },
-  sectionIcon: { fontSize: 22 },
   sectionRole: { fontSize: fontSize.xs, fontWeight: fontWeight.semibold, textTransform: 'uppercase', letterSpacing: 0.4 },
   sectionName: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold },
   closeBtn: { paddingVertical: spacing.sm, alignItems: 'center' },

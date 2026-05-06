@@ -29,6 +29,9 @@ const SIO_CONNECT = '0';
 const SIO_EVENT = '2';
 
 type EventHandler = (...args: unknown[]) => void;
+type StatusHandler = (status: WsConnectionStatus) => void;
+
+export type WsConnectionStatus = 'connected' | 'disconnected' | 'reconnecting';
 
 class ServiceWebSocketClient {
   private ws: WebSocket | null = null;
@@ -37,9 +40,12 @@ class ServiceWebSocketClient {
   private currentToken: string | null = null;
   private isManualDisconnect = false;
   private pingInterval: ReturnType<typeof setInterval> | null = null;
+  private connectionStatus: WsConnectionStatus = 'disconnected';
 
   /** Persistent listeners — replayed on every reconnect */
   private readonly listeners = new Map<string, Set<EventHandler>>();
+  /** Status change listeners */
+  private readonly statusListeners = new Set<StatusHandler>();
 
   connect(token: string): void {
     if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentToken === token) return;
@@ -52,6 +58,7 @@ class ServiceWebSocketClient {
     this.isManualDisconnect = true;
     this._cleanup();
     this.reconnectAttempts = 0;
+    this._setStatus('disconnected');
   }
 
   /** Register an event listener. Returns unsubscribe fn. */
@@ -61,8 +68,18 @@ class ServiceWebSocketClient {
     return () => this.listeners.get(event)?.delete(handler);
   }
 
+  /** Register a connection status listener. Returns unsubscribe fn. */
+  onStatusChange(handler: StatusHandler): () => void {
+    this.statusListeners.add(handler);
+    return () => this.statusListeners.delete(handler);
+  }
+
   get isConnected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  get status(): WsConnectionStatus {
+    return this.connectionStatus;
   }
 
   // ─── Private ────────────────────────────────────────────────────────────────
@@ -127,6 +144,7 @@ class ServiceWebSocketClient {
       // Namespace connected — reset reconnect counter
       this.reconnectAttempts = 0;
       this._clearReconnectTimer();
+      this._setStatus('connected');
       this._emit('connection:ack', {});
       return;
     }
@@ -169,7 +187,11 @@ class ServiceWebSocketClient {
   }
 
   private _scheduleReconnect(): void {
-    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      this._setStatus('disconnected');
+      return;
+    }
+    this._setStatus('reconnecting');
     const delay = RECONNECT_DELAYS[this.reconnectAttempts];
     this.reconnectAttempts += 1;
     this._clearReconnectTimer();
@@ -200,6 +222,14 @@ class ServiceWebSocketClient {
       }
       this.ws = null;
     }
+  }
+
+  private _setStatus(status: WsConnectionStatus): void {
+    if (this.connectionStatus === status) return;
+    this.connectionStatus = status;
+    this.statusListeners.forEach((handler) => {
+      try { handler(status); } catch { /* ignore */ }
+    });
   }
 }
 

@@ -3,6 +3,7 @@ import { View, Text, ScrollView, StyleSheet, RefreshControl, TouchableOpacity } 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
@@ -47,8 +48,8 @@ export function HomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.kpiRow}>
-          <KPIBox label="Pendientes" value={kpis.pending} accent={colors.warning} icon="📋" />
-          <KPIBox label="En Ruta" value={kpis.inTransit} accent={colors.primary} icon="🏍️" />
+          <KPIBox label="Pendientes" value={kpis.pending} accent={colors.warning} iconName="clipboard-outline" />
+          <KPIBox label="En Ruta" value={kpis.inTransit} accent={colors.primary} iconName="bicycle-outline" />
         </View>
 
         <DailyProgress completed={kpis.completed} total={totalOrders} />
@@ -73,7 +74,7 @@ export function HomeScreen() {
           </View>
         ) : (
           <View style={[styles.emptyCard, { backgroundColor: colors.surface }]}>
-            <Text style={styles.emptyIcon}>📦</Text>
+            <Ionicons name="cube-outline" size={40} color={colors.neutral400} />
             <Text style={[styles.emptyText, { color: colors.neutral800 }]}>Sin servicios activos</Text>
             <TouchableOpacity onPress={() => navigation.navigate('Orders')} activeOpacity={0.7}>
               <Text style={[styles.emptyLink, { color: colors.primary }]}>
@@ -114,7 +115,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  emptyIcon: { fontSize: 40 },
   emptyText: { fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   emptyLink: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, marginTop: spacing.xs },
 });

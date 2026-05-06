@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -78,7 +79,7 @@ function SummaryCard({
       {lastSettlement && (
         <View style={[summaryStyles.pill, { backgroundColor: colors.primaryDark }]}>
           <Text style={[summaryStyles.pillText, { color: colors.white }]}>
-            🏍️ {lastSettlement.total_services} servicios en este período
+            {lastSettlement.total_services} servicios en este período
           </Text>
         </View>
       )}
@@ -148,7 +149,7 @@ const summaryStyles = StyleSheet.create({
 
 // ─── KPI chips ───────────────────────────────────────────────────────────────
 
-function KpiChip({ icon, label, value }: { icon: string; label: string; value: string }) {
+function KpiChip({ iconName, label, value }: { iconName: keyof typeof Ionicons.glyphMap; label: string; value: string }) {
   const { colors } = useTheme();
   return (
     <View
@@ -158,7 +159,7 @@ function KpiChip({ icon, label, value }: { icon: string; label: string; value: s
         shadows.sm,
       ]}
     >
-      <Text style={kpiStyles.icon}>{icon}</Text>
+      <Ionicons name={iconName} size={20} color={colors.primary} />
       <Text style={[kpiStyles.value, { color: colors.neutral900 }]}>{value}</Text>
       <Text style={[kpiStyles.label, { color: colors.neutral500 }]}>{label}</Text>
     </View>
@@ -173,7 +174,6 @@ const kpiStyles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
   },
-  icon: { fontSize: 20 },
   value: { fontSize: fontSize.lg, fontWeight: fontWeight.bold },
   label: { fontSize: fontSize.xs, textAlign: 'center' },
 });
@@ -256,7 +256,7 @@ function IncentivesPlaceholder() {
         shadows.sm,
       ]}
     >
-      <Text style={incStyles.icon}>🎯</Text>
+      <Ionicons name="trophy-outline" size={28} color={colors.primary} />
       <Text style={[incStyles.title, { color: colors.neutral800 }]}>Incentivos y objetivos</Text>
       <Text style={[incStyles.desc, { color: colors.neutral500 }]}>
         Próximamente podrás ver tus metas activas y el progreso hacia bonificaciones especiales.
@@ -274,7 +274,6 @@ const incStyles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
   },
-  icon: { fontSize: 28 },
   title: { fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   desc: { fontSize: fontSize.sm, textAlign: 'center', lineHeight: 20 },
 });
@@ -354,21 +353,9 @@ export function EarningsScreen() {
 
             {/* 2. KPI chips */}
             <View style={styles.kpiRow}>
-              <KpiChip
-                icon="📋"
-                label="Liquidaciones"
-                value={String(totalSettlements)}
-              />
-              <KpiChip
-                icon="🏍️"
-                label="Servicios"
-                value={String(totalServices)}
-              />
-              <KpiChip
-                icon="💰"
-                label="Promedio/liq."
-                value={formatCurrency(avgPerSettlement)}
-              />
+              <KpiChip iconName="receipt-outline"   label="Liquidaciones"  value={String(totalSettlements)} />
+              <KpiChip iconName="bicycle-outline"   label="Servicios"      value={String(totalServices)} />
+              <KpiChip iconName="wallet-outline"    label="Promedio/liq."  value={formatCurrency(avgPerSettlement)} />
             </View>
 
             {/* 3. Incentives placeholder */}
@@ -396,7 +383,7 @@ export function EarningsScreen() {
         )}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📊</Text>
+            <Ionicons name="bar-chart-outline" size={44} color={colors.neutral400} />
             <Text style={[styles.emptyTitle, { color: colors.neutral800 }]}>
               Sin liquidaciones aún
             </Text>
@@ -443,7 +430,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxxl,
     gap: spacing.sm,
   },
-  emptyIcon: { fontSize: 44 },
   emptyTitle: { fontSize: fontSize.md, fontWeight: fontWeight.semibold },
   emptyDesc: { fontSize: fontSize.sm, textAlign: 'center', lineHeight: 20 },
 });

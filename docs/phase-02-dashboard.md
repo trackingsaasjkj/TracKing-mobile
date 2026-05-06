@@ -15,6 +15,25 @@ The home screen shown after login. Displays the courier's profile, operational s
 
 ---
 
+## Real-time Updates
+
+The dashboard receives live updates via WebSocket through the existing `/services` namespace connection.
+
+| Event | Source | Action |
+|-------|--------|--------|
+| `service:assigned` | `wsClient` (`/services` namespace) | Triggers full dashboard refresh — new service added to KPI counts |
+| `service:updated` | `wsClient` (`/services` namespace) | KPIs recalculate automatically from `servicesStore` (no re-fetch needed) |
+
+The hook `useDashboardUpdates(onRefresh)` encapsulates this logic. It is mounted inside `useDashboard` and only registers the listener when `accessToken` is present.
+
+```
+useDashboard()
+  └── useDashboardUpdates(refresh)
+        └── wsClient.on('service:assigned', () => refresh())
+```
+
+---
+
 ## Files
 
 ```
@@ -24,7 +43,9 @@ src/features/dashboard/
 │   ├── Header.tsx
 │   ├── KPIBox.tsx
 │   └── ActiveServiceCard.tsx
-├── hooks/useDashboard.ts
+├── hooks/
+│   ├── useDashboard.ts           ← integrates useDashboardUpdates
+│   └── useDashboardUpdates.ts    ← NEW: WS listener for service:assigned
 ├── screens/HomeScreen.tsx
 └── types/dashboard.types.ts
 ```
@@ -58,9 +79,10 @@ src/features/dashboard/
 
 ## Completion Criteria
 
-- [ ] Courier name and status displayed in header
-- [ ] Three KPI cards rendered
-- [ ] Active service card shown when service is ACCEPTED or IN_TRANSIT
-- [ ] "No active service" message shown otherwise
-- [ ] Map shows current GPS position
-- [ ] Error state with retry button on fetch failure
+- [x] Courier name and status displayed in header
+- [x] Three KPI cards rendered
+- [x] Active service card shown when service is ACCEPTED or IN_TRANSIT
+- [x] "No active service" message shown otherwise
+- [x] Map shows current GPS position
+- [x] Error state with retry button on fetch failure
+- [x] KPIs update in real-time when a new service is assigned via WebSocket

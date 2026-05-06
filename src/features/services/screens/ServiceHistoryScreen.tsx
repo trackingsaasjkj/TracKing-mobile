@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing } from '@/shared/ui/spacing';
@@ -82,7 +83,7 @@ export function ServiceHistoryScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Text style={styles.emptyIcon}>📋</Text>
+            <Ionicons name="time-outline" size={40} color={colors.neutral400} />
             <Text style={[styles.emptyText, { color: colors.neutral400 }]}>
               Sin historial disponible
             </Text>
@@ -121,7 +122,6 @@ const styles = StyleSheet.create({
   countText: { fontSize: fontSize.xs, fontWeight: fontWeight.bold },
   list: { padding: spacing.lg, paddingBottom: spacing.xxxl },
   empty: { alignItems: 'center', paddingTop: spacing.huge, gap: spacing.md },
-  emptyIcon: { fontSize: 40 },
   emptyText: { fontSize: fontSize.sm },
   footer: { paddingVertical: spacing.lg, alignItems: 'center' },
 });

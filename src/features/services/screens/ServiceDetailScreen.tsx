@@ -97,7 +97,11 @@ export function ServiceDetailScreen() {
   const handlePayment = async (status: PaymentStatus) => {
     setShowPaymentModal(false);
     const result = await performPaymentAction(service.id, status);
-    if (!result.ok) Alert.alert('Aviso', result.error ?? 'No se pudo actualizar el estado de pago');
+    if (!result.ok) {
+      Alert.alert('Aviso', result.error ?? 'No se pudo actualizar el estado de pago');
+    } else {
+      navigation.navigate('ServicesList');
+    }
   };
 
   return (

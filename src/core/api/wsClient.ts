@@ -12,8 +12,8 @@
  *   4. Exchange Socket.io packets over WS
  */
 
-const WS_BASE_URL = 'wss://tracking-backend-tald.onrender.com';
-const HTTP_BASE_URL = 'https://tracking-backend-tald.onrender.com';
+const WS_BASE_URL = 'wss://tracking-backend-g4mq.onrender.com';
+const HTTP_BASE_URL = 'https://tracking-backend-g4mq.onrender.com';
 const NAMESPACE = '/services';
 
 /** Backoff delays in ms: 1s, 2s, 4s, 8s, 16s, 30s */

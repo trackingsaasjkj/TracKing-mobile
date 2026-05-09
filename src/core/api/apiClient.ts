@@ -2,10 +2,18 @@ import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'ax
 import { handleApiError } from '@/shared/utils/errorHandler';
 
 /**
- * Backend en la nube (rama apk).
- * Esta URL apunta al servidor de producción desplegado en Render.
+ * Backend API URL configuration.
+ * 
+ * Configuración automática según el entorno:
+ * - Desarrollo (expo start): Lee de .env.local → http://192.168.1.14:3000
+ * - Producción (APK): Lee de .env → https://tracking-backend-g4mq.onrender.com
+ * - EAS Build: Lee de eas.json según el profile (development/preview/production)
+ * 
+ * Precedencia de variables:
+ * 1. EXPO_PUBLIC_API_URL (variable de entorno)
+ * 2. Fallback: https://tracking-backend-g4mq.onrender.com (Render)
  */
-const BASE_URL = 'http://192.168.1.14:3000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://tracking-backend-g4mq.onrender.com';
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {

@@ -5,7 +5,7 @@ import { handleApiError } from '@/shared/utils/errorHandler';
  * Backend en la nube (rama apk).
  * Esta URL apunta al servidor de producción desplegado en Render.
  */
-const BASE_URL = 'https://tracking-backend-g4mq.onrender.com';
+const BASE_URL = 'http://192.168.1.14:3000';
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {

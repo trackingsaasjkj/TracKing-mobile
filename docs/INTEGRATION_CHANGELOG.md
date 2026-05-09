@@ -2539,3 +2539,92 @@ Suite mobile: **249 tests, todos pasan.**
 ---
 
 *Actualización: 5 de Mayo de 2026 (noche) — Iconos Ionicons + navegación ServiceDetail*
+
+---
+
+## 11. Tracking en dos fases + estabilidad del mapa (Mayo 2026)
+
+### CAMBIO-22 — CourierServiceMap: prop `navigationTarget` para dividir el tracking en dos fases
+
+**Problema:** Al aceptar un servicio, los botones Maps y Waze del mapa abrían la ruta hacia el punto de **entrega** (destino). El mensajero primero necesita navegar al punto de **recogida** para recoger el paquete, y solo después de iniciar la ruta debe navegar al destino.
+
+**Causa raíz:** `CourierServiceMap` siempre pasaba `destinationLat/Lng` a las funciones `openInGoogleMaps` y `openInWaze`, sin considerar la fase del servicio.
+
+**Solución:** Se agregó la prop `navigationTarget?: 'pickup' | 'delivery'` a `CourierServiceMapProps`:
+
+- `'pickup'` → Maps/Waze navegan al punto de recogida (origen). Google Maps usa la posición GPS del mensajero como punto de partida si está disponible.
+- `'delivery'` → Maps/Waze navegan al punto de entrega (destino). Comportamiento anterior.
+- Default: `'delivery'` para compatibilidad con usos existentes.
+
+`ServiceDetailScreen` deriva el valor automáticamente del estado del servicio:
+
+```tsx
+navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
+```
+
+**Flujo resultante:**
+
+| Estado | Botón de acción | Maps / Waze apuntan a |
+|---|---|---|
+| `ASSIGNED` | Aceptar servicio | Recogida |
+| `ACCEPTED` | Iniciar ruta | Recogida |
+| `IN_TRANSIT` | Finalizar entrega | Entrega |
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-23 — CourierServiceMap: HTML del mapa congelado con `useRef` (sin reload al cambiar estado)
+
+**Problema:** Al presionar "Iniciar ruta" (transición `ACCEPTED → IN_TRANSIT`), el mapa se recargaba completamente con un retraso visible de ~300-600ms.
+
+**Causa raíz:** El `useMemo` que construye el HTML de Leaflet tenía como dependencias `[originLat, originLng, destinationLat, destinationLng, colors.primary, colors.white]`. Cuando el backend respondía con el servicio actualizado, React Query actualizaba el store y el componente re-renderizaba. `Number(service.origin_lat)` producía un nuevo primitivo numérico que invalidaba el `useMemo`, forzando una reconstrucción del HTML completo. Eso causaba un reload del `WebView` que re-descargaba Leaflet desde `unpkg.com`.
+
+**Solución:** Las coordenadas estáticas se congelan en `useRef` al primer render. El `useMemo` ahora tiene dependencias vacías `[]`, garantizando que el HTML se construye exactamente una vez por montaje del componente. Los cambios de estado del servicio ya no afectan el mapa.
+
+```typescript
+// Antes — se invalidaba en cada re-render del servicio
+const mapHtml = useMemo(
+  () => buildServiceMapHtml(originLat, originLng, ...),
+  [originLat, originLng, destinationLat, destinationLng, colors.primary, colors.white],
+);
+
+// Después — construido una sola vez, inmune a re-renders
+const frozenOriginLat = useRef(originLat);
+// ... (todos los valores estáticos congelados)
+const mapHtml = useMemo(
+  () => buildServiceMapHtml(frozenOriginLat.current, ...),
+  [], // deps vacías — nunca se reconstruye
+);
+```
+
+Las coordenadas del mensajero siguen actualizándose via `postMessage` sin ningún cambio.
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+
+---
+
+### Tests agregados
+
+| Archivo | Tests nuevos | Cobertura |
+|---------|-------------|-----------|
+| `src/__tests__/services/courierServiceMap.test.ts` | +14 | `resolveNavTarget`, `navTargetFromStatus`, flujo ASSIGNED→IN_TRANSIT, P-13 (PBT navigationTarget), P-14 (PBT estabilidad HTML) |
+
+**Detalle de los tests nuevos:**
+
+- `resolveNavTarget` — 3 tests unitarios: pickup retorna origen, delivery retorna destino, son distintos cuando origen ≠ destino
+- `navTargetFromStatus` — 4 tests unitarios: un test por cada estado del servicio
+- Flujo completo — 4 tests de integración: navegación en cada fase y verificación del cambio al transicionar
+- P-13 (PBT, 300 runs) — `navigationTarget` resuelve coordenadas correctas para cualquier par de coords válidas
+- P-14 (PBT) — HTML del mapa es determinista, `navigationTarget` no afecta el HTML, solo los botones de nav
+
+Los tests anteriores de `courierServiceMap.test.ts` (P-11, P-12) se mantienen sin cambios.
+
+Suite mobile: **263 tests, todos pasan.**
+
+---
+
+*Actualización: 9 de Mayo de 2026 — Tracking en dos fases + estabilidad del mapa*

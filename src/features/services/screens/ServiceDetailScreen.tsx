@@ -125,6 +125,7 @@ export function ServiceDetailScreen() {
             destinationAddress={service.destination_address}
             courierLat={latitude}
             courierLng={longitude}
+            navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
           />
         )}
 

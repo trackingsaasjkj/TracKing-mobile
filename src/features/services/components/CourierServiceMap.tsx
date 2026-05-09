@@ -22,6 +22,13 @@ export interface CourierServiceMapProps {
    * the fixed 260px height used inside ServiceDetailScreen's scroll view.
    */
   fullScreen?: boolean;
+  /**
+   * Controls which point the Maps/Waze navigation buttons target.
+   * - 'pickup'   → navigate to origin (recogida) — used when status is ASSIGNED or ACCEPTED
+   * - 'delivery' → navigate to destination (entrega) — used when status is IN_TRANSIT
+   * Defaults to 'delivery' for backwards compatibility.
+   */
+  navigationTarget?: 'pickup' | 'delivery';
 }
 
 /**
@@ -71,29 +78,47 @@ export function CourierServiceMap({
   courierLat,
   courierLng,
   fullScreen = false,
+  navigationTarget = 'delivery',
 }: CourierServiceMapProps) {
   const { colors } = useTheme();
   const webViewRef = useRef<WebViewType>(null);
 
-  // Build the HTML once with the static origin/destination pins.
-  // The courier marker is updated via postMessage to avoid full reloads.
+  // Resolve which point Maps/Waze should navigate to based on the current phase
+  const navLat = navigationTarget === 'pickup' ? originLat : destinationLat;
+  const navLng = navigationTarget === 'pickup' ? originLng : destinationLng;
+
+  // Freeze the static map coordinates on first render.
+  // The map HTML must never be rebuilt after mount — doing so causes a full
+  // WebView reload which re-downloads Leaflet from the network (~300-600ms).
+  // Courier position updates are handled via postMessage (no reload needed).
+  // Origin/destination never change for the same service, so freezing is safe.
+  const frozenOriginLat = useRef(originLat);
+  const frozenOriginLng = useRef(originLng);
+  const frozenOriginAddress = useRef(originAddress);
+  const frozenDestLat = useRef(destinationLat);
+  const frozenDestLng = useRef(destinationLng);
+  const frozenDestAddress = useRef(destinationAddress);
+  const frozenPrimary = useRef(colors.primary);
+  const frozenWhite = useRef(colors.white);
+
+  // Build the HTML exactly once — deps array is intentionally empty.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const mapHtml = useMemo(
     () =>
       buildServiceMapHtml(
-        originLat,
-        originLng,
-        originAddress,
-        destinationLat,
-        destinationLng,
-        destinationAddress,
+        frozenOriginLat.current,
+        frozenOriginLng.current,
+        frozenOriginAddress.current,
+        frozenDestLat.current,
+        frozenDestLng.current,
+        frozenDestAddress.current,
         courierLat ?? null,
         courierLng ?? null,
-        colors.primary,
-        colors.white,
+        frozenPrimary.current,
+        frozenWhite.current,
       ),
-    // Only rebuild if static data changes — courier coords are handled via postMessage
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [originLat, originLng, destinationLat, destinationLng, colors.primary, colors.white],
+    [],
   );
 
   // Update courier marker position without reloading the map
@@ -126,7 +151,10 @@ export function CourierServiceMap({
         <TouchableOpacity
           style={[styles.navBtn, { backgroundColor: colors.surface }]}
           activeOpacity={0.85}
-          onPress={() => openInGoogleMaps(originLat, originLng, destinationLat, destinationLng)}
+          onPress={() => openInGoogleMaps(
+            courierLat ?? originLat, courierLng ?? originLng,
+            navLat, navLng,
+          )}
         >
           <Ionicons name="map-outline" size={13} color={colors.neutral800} />
           <Text style={[styles.navLabel, { color: colors.neutral800 }]}>Maps</Text>
@@ -135,7 +163,7 @@ export function CourierServiceMap({
         <TouchableOpacity
           style={[styles.navBtn, { backgroundColor: colors.surface }]}
           activeOpacity={0.85}
-          onPress={() => openInWaze(destinationLat, destinationLng)}
+          onPress={() => openInWaze(navLat, navLng)}
         >
           <Ionicons name="navigate-outline" size={13} color={colors.neutral800} />
           <Text style={[styles.navLabel, { color: colors.neutral800 }]}>Waze</Text>

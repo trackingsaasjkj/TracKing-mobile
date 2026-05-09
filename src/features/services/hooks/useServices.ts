@@ -47,8 +47,8 @@ export function useServices() {
   // Layer 1: WebSocket + FCM real-time updates (< 50ms)
   useServiceUpdates();
 
-  // Layer 2: Polling fallback every 45s (covers WS downtime)
-  useAutoRefresh(refresh, { foregroundInterval: 45_000 });
+  // Layer 2: Polling fallback every 15s (covers WS downtime, faster than 45s)
+  useAutoRefresh(refresh, { foregroundInterval: 15_000 });
 
   const performAction = useCallback(
     async (service: Service): Promise<{ ok: boolean; error?: string }> => {

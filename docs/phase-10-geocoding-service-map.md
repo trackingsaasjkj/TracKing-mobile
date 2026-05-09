@@ -56,18 +56,35 @@ interface CourierServiceMapProps {
   destinationLat: number;
   destinationLng: number;
   destinationAddress: string;
-  courierLat?: number | null;   // desde useTrackingCoords()
+  courierLat?: number | null;              // desde useTrackingCoords()
   courierLng?: number | null;
-  fullScreen?: boolean;         // true → flex:1, sin altura fija ni bordes
+  fullScreen?: boolean;                    // true → flex:1, sin altura fija ni bordes
+  navigationTarget?: 'pickup' | 'delivery'; // controla destino de Maps/Waze (default: 'delivery')
 }
 ```
 
 ### Comportamiento
 
-- El HTML de Leaflet se construye **una sola vez** con `useMemo` (deps: coords estáticas + colores del tema)
+- El HTML de Leaflet se construye **exactamente una vez** por montaje del componente — `useMemo` con deps vacías `[]` y coordenadas congeladas en `useRef`
 - `fitBounds` en Leaflet centra el mapa para mostrar todos los pins visibles
 - El pin del courier se actualiza via `postMessage` → `marker.setLatLng()` — sin reload del WebView
 - Popup en cada pin con la dirección correspondiente
+- Los botones Maps/Waze resuelven su destino a partir de `navigationTarget` — no afectan el HTML del mapa
+
+### navigationTarget — Fase de navegación
+
+Controla a qué punto geográfico abren los botones Maps y Waze:
+
+| Valor | Destino de Maps/Waze | Cuándo usarlo |
+|---|---|---|
+| `'pickup'` (default) | Punto de recogida (origen) | Estado `ASSIGNED` o `ACCEPTED` |
+| `'delivery'` | Punto de entrega (destino) | Estado `IN_TRANSIT` |
+
+`ServiceDetailScreen` deriva el valor automáticamente del estado del servicio:
+
+```tsx
+navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
+```
 
 ### Modos de visualización
 
@@ -163,6 +180,7 @@ destination_verified?: boolean;
     destinationAddress={service.destination_address}
     courierLat={latitude}    // desde useTrackingCoords()
     courierLng={longitude}
+    navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
   />
 )}
 ```
@@ -229,3 +247,5 @@ Sección "Ciudad por defecto del mapa" en el tab Config:
 - [x] API key centralizada en `src/config/map.ts`
 - [x] `postMessage` para actualizar pin del courier sin reload
 - [x] `CourierServiceMap` reutilizado en `TrackingScreen` con `fullScreen`
+- [x] Prop `navigationTarget` para dividir el tracking en dos fases (CAMBIO-22)
+- [x] HTML del mapa congelado con `useRef` — sin reload al cambiar estado del servicio (CAMBIO-23)

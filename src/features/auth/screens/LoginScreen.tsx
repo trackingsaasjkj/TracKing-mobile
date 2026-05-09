@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
+import { Ionicons } from '@expo/vector-icons';
 import { useLogin } from '../hooks/useLogin';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
@@ -17,9 +18,13 @@ interface FormValues {
   password: string;
 }
 
-function IconUser() { return <Text style={styles.iconText}>👤</Text>; }
+function IconUser() {
+  const { colors } = useTheme();
+  return <Ionicons name="person-outline" size={18} color={colors.neutral400} />;
+}
 function IconEye({ hidden }: { hidden: boolean }) {
-  return <Text style={styles.iconText}>{hidden ? '🙈' : '👁️'}</Text>;
+  const { colors } = useTheme();
+  return <Ionicons name={hidden ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.neutral400} />;
 }
 
 export function LoginScreen() {
@@ -134,7 +139,6 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold, textAlign: 'center', marginBottom: spacing.sm },
   subtitle: { fontSize: fontSize.md, textAlign: 'center', lineHeight: fontSize.md * 1.5, marginBottom: spacing.xxxl },
   form: { gap: 0 },
-  iconText: { fontSize: 18 },
   forgotRow: { alignItems: 'flex-end', marginTop: -spacing.sm, marginBottom: spacing.xl },
   forgotText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium },
   apiError: { fontSize: fontSize.sm, textAlign: 'center', marginBottom: spacing.md },

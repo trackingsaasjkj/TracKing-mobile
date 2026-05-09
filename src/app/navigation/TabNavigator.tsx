@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
 import { ServicesNavigator } from '@/features/services/navigation/ServicesNavigator';
@@ -19,11 +19,14 @@ export type MainTabParamList = {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const TAB_ICONS: Record<keyof MainTabParamList, { active: string; inactive: string }> = {
-  Home:     { active: '🏠', inactive: '🏡' },
-  Orders:   { active: '📦', inactive: '📫' },
-  Earnings: { active: '💰', inactive: '💵' },
-  Config:   { active: '⚙️', inactive: '🔧' },
+const TAB_ICONS: Record<
+  keyof MainTabParamList,
+  { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }
+> = {
+  Home:     { active: 'home',           inactive: 'home-outline' },
+  Orders:   { active: 'cube',           inactive: 'cube-outline' },
+  Earnings: { active: 'bar-chart',      inactive: 'bar-chart-outline' },
+  Config:   { active: 'settings',       inactive: 'settings-outline' },
 };
 
 // Envolver componentes con swipe navigation
@@ -70,9 +73,11 @@ export function TabNavigator() {
         tabBarIcon: ({ focused, size }) => {
           const icons = TAB_ICONS[route.name as keyof MainTabParamList];
           return (
-            <Text style={{ fontSize: size - 4 }}>
-              {focused ? icons.active : icons.inactive}
-            </Text>
+            <Ionicons
+              name={focused ? icons.active : icons.inactive}
+              size={size}
+              color={focused ? colors.primary : colors.neutral500}
+            />
           );
         },
       })}

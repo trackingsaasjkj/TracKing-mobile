@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -19,6 +19,7 @@ import type { ServicesStackParamList } from '../navigation/ServicesNavigator';
 import type { PaymentStatus } from '../types/services.types';
 
 type Route = NativeStackScreenProps<ServicesStackParamList, 'ServiceDetail'>['route'];
+type Nav = NativeStackNavigationProp<ServicesStackParamList>;
 
 const ACTION_LABEL: Record<string, string> = {
   ACCEPTED: 'Aceptar servicio',
@@ -39,7 +40,7 @@ const PAYMENT_STATUS_LABEL: Record<string, string> = {
 
 export function ServiceDetailScreen() {
   const route = useRoute<Route>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
   const { serviceId } = route.params;
   const { colors } = useTheme();
   const {
@@ -96,14 +97,18 @@ export function ServiceDetailScreen() {
   const handlePayment = async (status: PaymentStatus) => {
     setShowPaymentModal(false);
     const result = await performPaymentAction(service.id, status);
-    if (!result.ok) Alert.alert('Aviso', result.error ?? 'No se pudo actualizar el estado de pago');
+    if (!result.ok) {
+      Alert.alert('Aviso', result.error ?? 'No se pudo actualizar el estado de pago');
+    } else {
+      navigation.navigate('ServicesList');
+    }
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.statusRow}>
-          <TouchableOpacity onPress={() => navigation.goBack()} activeOpacity={0.7} style={styles.backBtnContainer}>
+          <TouchableOpacity onPress={() => navigation.navigate('ServicesList')} activeOpacity={0.7} style={styles.backBtnContainer}>
             <Text style={[styles.backIcon, { color: colors.primary }]}>←</Text>
           </TouchableOpacity>
           <StatusBadge status={service.status} />
@@ -120,6 +125,7 @@ export function ServiceDetailScreen() {
             destinationAddress={service.destination_address}
             courierLat={latitude}
             courierLng={longitude}
+            navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
           />
         )}
 

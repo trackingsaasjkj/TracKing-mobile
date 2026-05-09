@@ -2299,3 +2299,332 @@ Los botones usan `position: 'absolute'` con sombra ligera para ser legibles sobr
 ---
 
 *Actualización: 1 de Mayo de 2026 (tarde) — Navegación externa + Contactos + Dashboard multi-servicio*
+
+---
+
+## 9. Implementación de WebSocket — Tiempo Real Completo (Mayo 2026)
+
+### Contexto
+
+Se completó la implementación de WebSocket para cubrir todos los módulos del mobile que requieren actualizaciones en tiempo real. La base (`wsClient.ts`, `useServiceUpdates.ts`) ya existía y funcionaba para el módulo de servicios. Esta sesión extendió el sistema a dashboard, earnings, y agregó observabilidad del estado de conexión.
+
+---
+
+### CAMBIO-73 — `wsClient`: estado de conexión observable
+
+**Problema:** No había forma de saber desde la UI si el WebSocket estaba conectado, reconectando o desconectado. El estado era interno a la clase y no se podía suscribir.
+
+**Solución:** Se agregaron tres elementos a `ServiceWebSocketClient`:
+
+- `status` getter — retorna el estado actual (`'connected' | 'disconnected' | 'reconnecting'`)
+- `onStatusChange(handler)` — registra un listener que se llama cada vez que el estado cambia. Retorna función de unsubscribe.
+- `_setStatus(status)` — método privado que actualiza el estado y notifica a todos los listeners. Incluye guard de no-duplicados (no dispara si el estado no cambió).
+
+**Transiciones de estado:**
+```
+initial                → disconnected
+SIO namespace connect  → connected
+abnormal close / error → reconnecting
+max retries exhausted  → disconnected
+manual disconnect()    → disconnected
+```
+
+**Archivos modificados:**
+- `src/core/api/wsClient.ts`
+
+---
+
+### CAMBIO-74 — `useWsStatus`: hook reactivo de estado de conexión
+
+**Problema:** Los componentes no podían leer el estado de conexión del WS de forma reactiva.
+
+**Solución:** Hook nuevo que inicializa su estado con `wsClient.status` y se suscribe a `onStatusChange` para re-renderizar cuando el estado cambia. Se desuscribe automáticamente en unmount.
+
+**Archivos creados:**
+- `src/core/hooks/useWsStatus.ts`
+
+---
+
+### CAMBIO-75 — `WsStatusDot`: indicador visual de conexión
+
+**Solución:** Componente nuevo que muestra un punto de 8px con color según el estado:
+
+| Estado | Color |
+|--------|-------|
+| `connected` | `#22c55e` (verde) |
+| `reconnecting` | `#f59e0b` (ámbar) |
+| `disconnected` | `#ef4444` (rojo) |
+
+Listo para usar en cualquier pantalla o header.
+
+**Archivos creados:**
+- `src/shared/components/WsStatusDot.tsx`
+
+---
+
+### CAMBIO-76 — `useDashboardUpdates`: dashboard reactivo a nuevos servicios
+
+**Problema:** El dashboard no se actualizaba cuando el backend asignaba un nuevo servicio al courier. El mensajero tenía que hacer pull-to-refresh manualmente para ver el nuevo pedido en sus KPIs.
+
+**Causa raíz:** `useDashboard` no escuchaba eventos WebSocket.
+
+**Solución:** Hook nuevo `useDashboardUpdates(onRefresh)` que escucha el evento `service:assigned` en el `wsClient` (ya conectado por `useServiceUpdates`) y llama `onRefresh()` para re-fetch del dashboard.
+
+El evento `service:updated` no requiere re-fetch porque los KPIs se recalculan automáticamente desde `servicesStore`, que ya está sincronizado por `useServiceUpdates`.
+
+**Integración:** `useDashboard` llama `useDashboardUpdates(refresh)` internamente.
+
+**Archivos creados:**
+- `src/features/dashboard/hooks/useDashboardUpdates.ts`
+
+**Archivos modificados:**
+- `src/features/dashboard/hooks/useDashboard.ts`
+
+---
+
+### CAMBIO-77 — `useEarningsUpdates`: ganancias reactivas a nuevas liquidaciones
+
+**Problema:** La pantalla de ganancias no se actualizaba cuando el admin generaba una nueva liquidación para el courier. El mensajero tenía que hacer pull-to-refresh manualmente.
+
+**Solución:** Hook nuevo `useEarningsUpdates()` que escucha el evento `settlement:created` en el `wsClient` e invalida el cache de React Query `['courier-earnings']`, forzando un re-fetch automático.
+
+**Integración:** `useEarnings` llama `useEarningsUpdates()` internamente.
+
+**Archivos creados:**
+- `src/features/earnings/hooks/useEarningsUpdates.ts`
+
+**Archivos modificados:**
+- `src/features/earnings/hooks/useEarnings.ts`
+
+---
+
+### CAMBIO-78 — Backend: `emitSettlementCreated` en `ServiceUpdatesGateway`
+
+**Problema:** El gateway `/services` no tenía método para emitir el evento `settlement:created`.
+
+**Solución:** Se agregó `emitSettlementCreated(courierId, settlement)` al `ServiceUpdatesGateway`. Emite al room `courier:<courierId>` con el payload de la liquidación creada.
+
+**Archivos modificados:**
+- `TracKing-backend/src/modules/servicios/services-updates.gateway.ts`
+
+---
+
+### CAMBIO-79 — Backend: `GenerarLiquidacionCourierUseCase` emite WS al crear liquidación
+
+**Problema:** Al generar una liquidación, el courier no recibía ninguna notificación en tiempo real.
+
+**Solución:** `GenerarLiquidacionCourierUseCase` ahora inyecta `ServiceUpdatesGateway` y llama `emitSettlementCreated()` al final del flujo, después de crear la liquidación y marcar los servicios como liquidados.
+
+El payload emitido incluye: `id`, `total_earned`, `total_services`, `start_date`, `end_date`, `status`.
+
+**Dependencia de módulo:** `LiquidacionesModule` importa `ServiciosModule` para acceder al gateway exportado.
+
+**Archivos modificados:**
+- `TracKing-backend/src/modules/liquidaciones/application/use-cases/generar-liquidacion-courier.use-case.ts`
+- `TracKing-backend/src/modules/liquidaciones/liquidaciones.module.ts`
+
+---
+
+### Resumen de cambios
+
+| ID | Cambio | Módulo |
+|---|---|---|
+| CAMBIO-73 | `wsClient` — estado observable (`onStatusChange`, `status`) | Mobile — core |
+| CAMBIO-74 | `useWsStatus` — hook reactivo de estado de conexión | Mobile — core |
+| CAMBIO-75 | `WsStatusDot` — indicador visual verde/ámbar/rojo | Mobile — shared |
+| CAMBIO-76 | `useDashboardUpdates` — dashboard reactivo a `service:assigned` | Mobile — dashboard |
+| CAMBIO-77 | `useEarningsUpdates` — earnings reactivo a `settlement:created` | Mobile — earnings |
+| CAMBIO-78 | `emitSettlementCreated` en `ServiceUpdatesGateway` | Backend — servicios |
+| CAMBIO-79 | `GenerarLiquidacionCourierUseCase` emite WS al crear liquidación | Backend — liquidaciones |
+
+---
+
+### Arquitectura final de tiempo real
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    React Native App                          │
+│                                                             │
+│  useServices()          useDashboard()      useEarnings()   │
+│    └─ useServiceUpdates   └─ useDashboard     └─ useEarnings│
+│         │                     Updates()           Updates() │
+│         │                         │                   │     │
+│  ┌──────▼─────────────────────────▼───────────────────▼──┐  │
+│  │              wsClient (singleton /services)            │  │
+│  │  on('service:updated')  → updateService + setQueryData │  │
+│  │  on('service:assigned') → addService + refresh KPIs   │  │
+│  │  on('settlement:created') → invalidate earnings cache  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+                          │ wss://.../services
+┌─────────────────────────▼───────────────────────────────────┐
+│  NestJS — ServiceUpdatesGateway (/services namespace)        │
+│  emitServiceUpdate()      → service:updated                  │
+│  emitServiceAssigned()    → service:assigned                 │
+│  emitSettlementCreated()  → settlement:created  ← NEW        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Tests agregados
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `src/__tests__/core/wsClient.status.spec.ts` | 11 | Estado inicial, transiciones, múltiples listeners, unsubscribe, no-duplicados |
+| `src/__tests__/core/useWsStatus.test.ts` | 7 | Hook reactivo, unsubscribe en unmount |
+| `src/__tests__/dashboard/useDashboardUpdates.test.ts` | 7 | Registro de listener, onRefresh en service:assigned, sin token, unsubscribe |
+| `src/__tests__/earnings/useEarningsUpdates.test.ts` | 5 | Invalidación de cache, eventos no relacionados, múltiples eventos, unsubscribe |
+
+Suite completa: **243 tests, todos pasan.**
+
+---
+
+*Actualización: 5 de Mayo de 2026 — WebSocket completo: dashboard + earnings + observabilidad de conexión*
+
+---
+
+## 10. Iconos minimalistas + navegación del detalle (Mayo 2026)
+
+### CAMBIO-80 — Iconos: emojis reemplazados por Ionicons (opción A)
+
+**Problema:** Los iconos de la app eran emojis (`🏍️`, `📦`, `💰`, `📋`, etc.). El renderizado de emojis varía entre dispositivos Android/iOS, no respetan el tema oscuro/claro, y no tienen contraste controlado con los colores de la app.
+
+**Solución:** Se reemplazaron todos los emojis por `Ionicons` de `@expo/vector-icons` (incluido en Expo, sin instalación extra). Estilo **outline → filled** al activarse. Colores:
+- Activo: `primary` (`#1D4ED8` light / `#60A5FA` dark)
+- Inactivo: `neutral400` (`#9CA3AF`)
+
+**Archivos modificados:**
+
+| Archivo | Cambio |
+|---------|--------|
+| `src/app/navigation/TabNavigator.tsx` | Emojis → Ionicons en tabs (home, cube, bar-chart, time) |
+| `src/features/dashboard/components/KPIBox.tsx` | Prop `icon: string` → `iconName: keyof Ionicons.glyphMap` |
+| `src/features/dashboard/screens/HomeScreen.tsx` | KPIBox con `clipboard-outline` y `bicycle-outline`; empty state con `cube-outline` |
+| `src/features/services/screens/ServicesScreen.tsx` | Menú dropdown con `checkmark-circle-outline` y `time-outline`; empty state con `cube-outline` |
+| `src/features/services/screens/ServiceHistoryScreen.tsx` | Empty state con `time-outline` |
+| `src/features/services/components/CourierServiceMap.tsx` | Botones Maps/Waze con `map-outline` y `navigate-outline` |
+| `src/features/services/components/ContactsMenu.tsx` | Secciones con `person-outline` y `cube-outline` |
+| `src/features/services/components/PhoneActions.tsx` | Botones con `copy-outline`, `call-outline`, `logo-whatsapp` |
+| `src/features/earnings/screens/EarningsScreen.tsx` | KPI chips con `receipt-outline`, `bicycle-outline`, `wallet-outline`; incentivos con `trophy-outline`; empty con `bar-chart-outline` |
+| `src/features/earnings/components/SettlementDetailModal.tsx` | Meta con `location-outline` y `person-outline`; error con `warning-outline`; empty con `cube-outline` |
+| `src/features/workday/screens/WorkdayScreen.tsx` | Tema con `moon-outline`/`sunny-outline`; mapa con `map-outline` |
+| `src/features/auth/screens/LoginScreen.tsx` | Input icons con `person-outline`, `eye-outline`, `eye-off-outline` |
+
+---
+
+### CAMBIO-81 — ServiceDetailScreen: back navega siempre a ServicesList
+
+**Problema:** Al presionar el botón de back en el detalle de un servicio, `navigation.goBack()` regresaba a la pantalla anterior en el historial del stack. Si el courier llegó al detalle desde el dashboard (tocando una `ActiveServiceCard`), el back lo devolvía al dashboard en lugar de a la lista de servicios.
+
+**Causa raíz:** `goBack()` es dependiente del historial de navegación. El comportamiento correcto (ir a servicios) solo ocurría por casualidad cuando se llegaba desde `ServicesScreen`.
+
+**Solución:** Cambiado a `navigation.navigate('ServicesList')`. Siempre aterriza en `ServicesScreen` sin importar el origen. El tipo de navegación se actualizó a `NativeStackNavigationProp<ServicesStackParamList>` para tipado correcto.
+
+**Archivos modificados:**
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### Tests agregados
+
+| Archivo | Tests | Cobertura |
+|---------|-------|-----------|
+| `src/__tests__/services/serviceDetailNavigation.test.ts` | 6 | navigate vs goBack, destino siempre ServicesList, independencia del origen |
+| `TracKing-backend/src/tests/unit/liquidaciones/generar-liquidacion-courier-ws.use-case.spec.ts` | 10 | emitSettlementCreated llamado correctamente, payload completo, no emite en errores, total_earned como número |
+
+**Test corregido:**
+- `TracKing-backend/src/tests/unit/liquidaciones/generar-liquidacion-courier.use-case.spec.ts` — actualizado para pasar el `mockGateway` como 4to argumento del constructor (requerido tras CAMBIO-79).
+
+Suite mobile: **249 tests, todos pasan.**
+
+---
+
+*Actualización: 5 de Mayo de 2026 (noche) — Iconos Ionicons + navegación ServiceDetail*
+
+---
+
+## 11. Tracking en dos fases + estabilidad del mapa (Mayo 2026)
+
+### CAMBIO-22 — CourierServiceMap: prop `navigationTarget` para dividir el tracking en dos fases
+
+**Problema:** Al aceptar un servicio, los botones Maps y Waze del mapa abrían la ruta hacia el punto de **entrega** (destino). El mensajero primero necesita navegar al punto de **recogida** para recoger el paquete, y solo después de iniciar la ruta debe navegar al destino.
+
+**Causa raíz:** `CourierServiceMap` siempre pasaba `destinationLat/Lng` a las funciones `openInGoogleMaps` y `openInWaze`, sin considerar la fase del servicio.
+
+**Solución:** Se agregó la prop `navigationTarget?: 'pickup' | 'delivery'` a `CourierServiceMapProps`:
+
+- `'pickup'` → Maps/Waze navegan al punto de recogida (origen). Google Maps usa la posición GPS del mensajero como punto de partida si está disponible.
+- `'delivery'` → Maps/Waze navegan al punto de entrega (destino). Comportamiento anterior.
+- Default: `'delivery'` para compatibilidad con usos existentes.
+
+`ServiceDetailScreen` deriva el valor automáticamente del estado del servicio:
+
+```tsx
+navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
+```
+
+**Flujo resultante:**
+
+| Estado | Botón de acción | Maps / Waze apuntan a |
+|---|---|---|
+| `ASSIGNED` | Aceptar servicio | Recogida |
+| `ACCEPTED` | Iniciar ruta | Recogida |
+| `IN_TRANSIT` | Finalizar entrega | Entrega |
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+- `src/features/services/screens/ServiceDetailScreen.tsx`
+
+---
+
+### CAMBIO-23 — CourierServiceMap: HTML del mapa congelado con `useRef` (sin reload al cambiar estado)
+
+**Problema:** Al presionar "Iniciar ruta" (transición `ACCEPTED → IN_TRANSIT`), el mapa se recargaba completamente con un retraso visible de ~300-600ms.
+
+**Causa raíz:** El `useMemo` que construye el HTML de Leaflet tenía como dependencias `[originLat, originLng, destinationLat, destinationLng, colors.primary, colors.white]`. Cuando el backend respondía con el servicio actualizado, React Query actualizaba el store y el componente re-renderizaba. `Number(service.origin_lat)` producía un nuevo primitivo numérico que invalidaba el `useMemo`, forzando una reconstrucción del HTML completo. Eso causaba un reload del `WebView` que re-descargaba Leaflet desde `unpkg.com`.
+
+**Solución:** Las coordenadas estáticas se congelan en `useRef` al primer render. El `useMemo` ahora tiene dependencias vacías `[]`, garantizando que el HTML se construye exactamente una vez por montaje del componente. Los cambios de estado del servicio ya no afectan el mapa.
+
+```typescript
+// Antes — se invalidaba en cada re-render del servicio
+const mapHtml = useMemo(
+  () => buildServiceMapHtml(originLat, originLng, ...),
+  [originLat, originLng, destinationLat, destinationLng, colors.primary, colors.white],
+);
+
+// Después — construido una sola vez, inmune a re-renders
+const frozenOriginLat = useRef(originLat);
+// ... (todos los valores estáticos congelados)
+const mapHtml = useMemo(
+  () => buildServiceMapHtml(frozenOriginLat.current, ...),
+  [], // deps vacías — nunca se reconstruye
+);
+```
+
+Las coordenadas del mensajero siguen actualizándose via `postMessage` sin ningún cambio.
+
+**Archivos modificados:**
+- `src/features/services/components/CourierServiceMap.tsx`
+
+---
+
+### Tests agregados
+
+| Archivo | Tests nuevos | Cobertura |
+|---------|-------------|-----------|
+| `src/__tests__/services/courierServiceMap.test.ts` | +14 | `resolveNavTarget`, `navTargetFromStatus`, flujo ASSIGNED→IN_TRANSIT, P-13 (PBT navigationTarget), P-14 (PBT estabilidad HTML) |
+
+**Detalle de los tests nuevos:**
+
+- `resolveNavTarget` — 3 tests unitarios: pickup retorna origen, delivery retorna destino, son distintos cuando origen ≠ destino
+- `navTargetFromStatus` — 4 tests unitarios: un test por cada estado del servicio
+- Flujo completo — 4 tests de integración: navegación en cada fase y verificación del cambio al transicionar
+- P-13 (PBT, 300 runs) — `navigationTarget` resuelve coordenadas correctas para cualquier par de coords válidas
+- P-14 (PBT) — HTML del mapa es determinista, `navigationTarget` no afecta el HTML, solo los botones de nav
+
+Los tests anteriores de `courierServiceMap.test.ts` (P-11, P-12) se mantienen sin cambios.
+
+Suite mobile: **263 tests, todos pasan.**
+
+---
+
+*Actualización: 9 de Mayo de 2026 — Tracking en dos fases + estabilidad del mapa*

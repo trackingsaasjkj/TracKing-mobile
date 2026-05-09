@@ -29,6 +29,7 @@
     ]
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@react-native-community/netinfo": "11.5.2",
     "@react-native-firebase/app": "^24.0.0",
     "@react-native-firebase/messaging": "^24.0.0",

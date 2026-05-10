@@ -3,6 +3,7 @@ import { View, ActivityIndicator } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useSessionRestore } from '@/core/hooks/useSessionRestore';
+import { useTokenRefresh } from '@/core/hooks/useTokenRefresh';
 import { usePermissions } from '@/core/hooks/usePermissions';
 import { useServiceTracking } from '@/features/tracking/hooks/useServiceTracking';
 import { useTheme } from '@/shared/ui/useTheme';
@@ -20,6 +21,9 @@ export function RootNavigator() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { isRestoring } = useSessionRestore();
   const { colors } = useTheme();
+  
+  // Refresh authentication token every 10 minutes to prevent session expiration
+  useTokenRefresh();
   
   // Request permissions on app start
   usePermissions();

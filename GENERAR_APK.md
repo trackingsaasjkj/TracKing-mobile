@@ -1,7 +1,9 @@
 # Cómo generar el APK para instalación directa en Android
 
-Esta rama (`apk`) está configurada para conectarse al backend en la nube:
-**`https://tracking-backend-tald.onrender.com`**
+El APK se conecta a:
+**`https://tracking-backend-g4mq.onrender.com`**
+
+La URL está hardcodeada en `src/core/api/apiClient.ts` línea 6.
 
 ---
 
@@ -24,11 +26,9 @@ echo $JAVA_HOME      # ej: C:/Program Files/Eclipse Adoptium/jdk-17...
 
 ## Pasos para generar el APK
 
-### 1. Clonar la rama y instalar dependencias
+### 1. Instalar dependencias
 
 ```bash
-git clone -b apk <URL_DEL_REPO>
-cd courier-mobile-app
 npm install
 ```
 
@@ -56,13 +56,7 @@ sdk.dir=C\:\\Users\\TuUsuario\\AppData\\Local\\Android\\Sdk
 
 ```bash
 cd android
-./gradlew assembleRelease
-```
-
-En Windows:
-```bash
-cd android
-gradlew.bat assembleRelease
+.\gradlew.bat assembleRelease
 ```
 
 > La compilación puede tardar varios minutos la primera vez.
@@ -96,8 +90,30 @@ adb install android/app/build/outputs/apk/release/app-release.apk
 
 ---
 
+## Verificar que el APK se conecta correctamente
+
+Después de instalar el APK, abre la app e intenta iniciar sesión. Si ves el error **"Sin conexión"**:
+
+1. **Verifica que el backend está activo**
+   ```bash
+   curl https://tracking-backend-g4mq.onrender.com/api/health
+   ```
+   Si está en Render con plan gratuito, puede tardar ~30 segundos en responder la primera vez.
+
+2. **Verifica la conectividad del celular**
+   - Asegurate de que el celular tiene internet (WiFi o datos móviles)
+   - Intenta abrir un navegador y acceder a cualquier sitio
+
+3. **Ver logs de la app**
+   ```bash
+   adb logcat | grep -i "api\|error\|connection"
+   ```
+
+---
+
 ## Notas importantes
 
-- El APK generado con `assembleRelease` **no está firmado con una clave de producción**, por lo que es apto para distribución interna/testing pero no para publicar en Google Play.
-- Si el backend en Render está en el plan gratuito, puede tardar ~30 segundos en responder la primera petición (cold start).
-- Para builds de producción firmados, se necesita un keystore. Consultá la [documentación oficial de Expo](https://docs.expo.dev/build/building-on-ci/).
+- **URL del backend**: Está hardcodeada en `src/core/api/apiClient.ts` línea 6 como `https://tracking-backend-g4mq.onrender.com`
+- **Para cambiar la URL**: Edita `src/core/api/apiClient.ts` línea 6 y recompila
+- **Cold start en Render**: Si el backend está en Render con plan gratuito, puede tardar ~30 segundos en responder la primera petición
+- **APK no firmado**: El APK generado no está firmado con una clave de producción, por lo que es apto para distribución interna/testing pero no para publicar en Google Play

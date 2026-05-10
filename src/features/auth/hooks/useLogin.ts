@@ -35,8 +35,15 @@ export function useLogin(): UseLoginResult {
     setError(null);
     setIsLoading(true);
     try {
-      // Backend returns: { id, name, email, role, company_id, accessToken }
+      // Backend returns: { id, name, email, role, company_id, accessToken, refreshToken }
       const userData = await authApi.login({ email, password });
+      
+      console.log('[Login] Response received:', {
+        hasAccessToken: !!userData.accessToken,
+        hasRefreshToken: !!userData.refreshToken,
+        accessTokenLength: userData.accessToken?.length ?? 0,
+        refreshTokenLength: userData.refreshToken?.length ?? 0
+      });
 
       // Only allow COURIER role to use the mobile app
       if (userData.role !== 'COURIER') {
@@ -53,14 +60,17 @@ export function useLogin(): UseLoginResult {
         operationalStatus: 'UNAVAILABLE',
       };
 
-      // accessToken is returned in the body AND set as httpOnly cookie
-      setSession(user, userData.accessToken ?? '');
+      // Save both accessToken and refreshToken
+      console.log('[Login] Saving tokens to store');
+      console.log('[Login] accessToken:', userData.accessToken?.substring(0, 20) + '...');
+      console.log('[Login] refreshToken:', userData.refreshToken?.substring(0, 20) + '...');
+      setSession(user, userData.accessToken, userData.refreshToken);
 
       // Fetch real operational status — login response doesn't include it
       try {
         const profile = await dashboardApi.getProfile();
         user.operationalStatus = profile.operational_status;
-        setSession(user, userData.accessToken ?? '');
+        setSession(user, userData.accessToken, userData.refreshToken);
       } catch {
         // Non-critical: useDashboard will sync it on mount
       }

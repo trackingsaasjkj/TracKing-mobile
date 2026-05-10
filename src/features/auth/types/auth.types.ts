@@ -12,8 +12,9 @@ export interface CourierUser {
 export interface AuthState {
   user: CourierUser | null;
   accessToken: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
-  setSession: (user: CourierUser, token: string) => void;
+  setSession: (user: CourierUser, token: string, refreshToken?: string) => void;
   clearSession: () => void;
   setOperationalStatus: (status: OperationalStatus) => void;
 }
@@ -30,5 +31,7 @@ export interface LoginResponse {
   role: string;
   company_id: string;
   /** Returned in body by the backend alongside the httpOnly cookie */
-  accessToken?: string;
+  accessToken: string;
+  /** Returned in body by the backend alongside the httpOnly cookie */
+  refreshToken: string;
 }

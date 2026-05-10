@@ -9,14 +9,14 @@ export interface WorkdayTrackingResult {
 }
 
 /**
- * Manages the workday-level background location task.
+ * Manages the service-level background location task.
  *
- * This is separate from useLocation (which handles IN_SERVICE tracking).
- * Call startWorkdayTracking() when the courier starts their shift and
- * stopWorkdayTracking() when they end it.
+ * This hook is called by useServiceTracking when:
+ *   - A service is accepted (first active service) → start tracking
+ *   - All services are completed/cancelled → stop tracking
  *
  * The task runs even when the app is closed, ensuring the backend always
- * knows where available couriers are throughout the entire workday.
+ * knows where the courier is while actively delivering a service.
  *
  * Returns a result object with success status and reason for failure (if any).
  */

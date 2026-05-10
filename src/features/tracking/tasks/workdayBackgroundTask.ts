@@ -6,18 +6,16 @@ import { locationApi } from '../api/locationApi';
 export const WORKDAY_BACKGROUND_TASK = 'workday-background-location';
 
 /**
- * Background location task for the entire workday (jornada).
+ * Background location task for active service delivery.
  *
  * Lifecycle:
- *   - Starts when the courier calls startWorkday() → operationalStatus: AVAILABLE
- *   - Stops when the courier calls endWorkday()    → operationalStatus: UNAVAILABLE
+ *   - Starts when the courier accepts a service (first service → ASSIGNED/ACCEPTED/IN_TRANSIT)
+ *   - Stops when all services are completed/cancelled (no more active services)
  *
- * This ensures location is sent to the backend at all times during the workday,
- * regardless of whether the app is in the foreground, background, or closed.
+ * This ensures location is sent to the backend only while the courier is actively
+ * delivering a service, not during idle time between services.
  *
- * Unlike backgroundLocationTask (which only runs during IN_SERVICE), this task
- * runs for the full duration of the shift so the company always knows where
- * available couriers are.
+ * Managed by useServiceTracking hook which monitors service status changes.
  *
  * Uses sendFromBackground() which reads the JWT from Zustand first (in-memory),
  * then falls back to SecureStore (persisted to disk). This ensures the token

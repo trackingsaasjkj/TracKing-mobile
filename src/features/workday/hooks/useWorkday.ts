@@ -27,7 +27,7 @@ function hasActiveServices(): boolean {
 export function useWorkday(): UseWorkdayReturn {
   const [loading, setLoading] = useState(false);
   const setOperationalStatus = useAuthStore((s) => s.setOperationalStatus);
-  const { startWorkdayTracking, stopWorkdayTracking } = useWorkdayTracking();
+  const { stopWorkdayTracking } = useWorkdayTracking();
 
   const startWorkday = useCallback(async (): Promise<WorkdayResult> => {
     setLoading(true);
@@ -35,27 +35,9 @@ export function useWorkday(): UseWorkdayReturn {
       await workdayApi.start();
       setOperationalStatus('AVAILABLE');
       
-      // Start background location for the entire workday — runs even when app is closed
-      const trackingResult = await startWorkdayTracking();
-      if (!trackingResult.success) {
-        console.warn('[useWorkday] Background tracking failed:', trackingResult.reason);
-        // Workday started on the server but background tracking is broken.
-        // Rollback the workday on the server to keep state consistent,
-        // then inform the user so they can fix their location permission.
-        try { await workdayApi.end(); } catch { /* best-effort rollback */ }
-        setOperationalStatus('UNAVAILABLE');
-        const reason = trackingResult.reason ?? 'Permiso de ubicación en segundo plano denegado.';
-        Alert.alert(
-          'Permiso requerido',
-          `Para iniciar la jornada necesitas dar permiso de ubicación "Permitir todo el tiempo".
-
-Ve a: Configuración → Apps → TracKing → Permisos → Ubicación → Permitir todo el tiempo
-
-${reason}`,
-          [{ text: 'Entendido', style: 'default' }],
-        );
-        return { ok: false, error: 'Permiso de ubicación en segundo plano requerido.' };
-      }
+      // Background location tracking is NOT started here.
+      // It will be started when the courier accepts a service (IN_SERVICE state).
+      // See useServices.ts performAction() for tracking lifecycle.
 
       return { ok: true };
     } catch (err: any) {
@@ -63,7 +45,7 @@ ${reason}`,
     } finally {
       setLoading(false);
     }
-  }, [setOperationalStatus, startWorkdayTracking]);
+  }, [setOperationalStatus]);
 
   const endWorkday = useCallback(async (): Promise<WorkdayResult> => {
     // Client-side guard — backend also enforces this

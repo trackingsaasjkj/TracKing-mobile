@@ -86,9 +86,21 @@ export function useSessionRestore() {
 
     async function restore() {
       try {
-        const token = await secureStorage.getToken();
-        if (!token) return; // no stored token — go straight to login
+        const token = await secureStorage.getAccessToken();
+        const refreshToken = await secureStorage.getRefreshToken();
+        console.log('[SessionRestore] Tokens retrieved:', {
+          hasAccessToken: !!token,
+          hasRefreshToken: !!refreshToken,
+          accessTokenLength: token?.length ?? 0,
+          refreshTokenLength: refreshToken?.length ?? 0
+        });
+        
+        if (!token) {
+          console.log('[SessionRestore] No access token, going to login');
+          return; // no stored token — go straight to login
+        }
 
+        console.log('[SessionRestore] Calling /api/courier/me to validate session');
         const res = await apiClient.get<ApiResponse<CourierMeResponse>>('/api/courier/me');
         const profile = unwrap(res);
 
@@ -101,7 +113,8 @@ export function useSessionRestore() {
           operationalStatus: profile.operational_status,
         };
 
-        setSession(user, token);
+        setSession(user, token, refreshToken ?? undefined);
+        console.log('[SessionRestore] Session restored successfully');
 
         // If the courier is IN_SERVICE (actively delivering), ensure the background
         // location task is running — it may have been killed by the OS.
@@ -109,8 +122,9 @@ export function useSessionRestore() {
         if (profile.operational_status === 'IN_SERVICE') {
           await restoreWorkdayTracking();
         }
-      } catch {
+      } catch (err) {
         // Token invalid, expired, or network error — force re-login
+        console.log('[SessionRestore] Error during restore:', err);
         clearSession();
       } finally {
         // Always unblock, regardless of outcome

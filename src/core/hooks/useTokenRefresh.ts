@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { apiClient } from '@/core/api/apiClient';
+import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
 import { useAuthStore } from '@/features/auth/store/authStore';
 
 /**
@@ -16,22 +16,32 @@ import { useAuthStore } from '@/features/auth/store/authStore';
  */
 export function useTokenRefresh(): void {
   const accessToken = useAuthStore((s) => s.accessToken);
+  const user = useAuthStore((s) => s.user);
+  const setSession = useAuthStore((s) => s.setSession);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refreshToken = useCallback(async () => {
-    if (!accessToken) return;
+    if (!accessToken || !user) return;
 
     try {
-      await apiClient.post('/api/auth/refresh');
-      // Token refreshed successfully — the new token is in the httpOnly cookie
-      // and will be used by subsequent requests via the request interceptor
-      console.log('[TokenRefresh] Token refreshed successfully');
+      // Capturar la respuesta del refresh endpoint
+      const res = await apiClient.post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
+        '/api/auth/refresh'
+      );
+      
+      // Extraer los nuevos tokens de la respuesta
+      const { accessToken: newAccessToken, refreshToken: newRefreshToken } = unwrap(res);
+      
+      // Guardar los nuevos tokens en el store y secure storage
+      setSession(user, newAccessToken, newRefreshToken);
+      
+      console.log('[TokenRefresh] Token refreshed successfully and saved to store');
     } catch (error) {
       // If refresh fails, the response interceptor will handle the 401
       // and clear the session if necessary
       console.error('[TokenRefresh] Failed to refresh token:', error);
     }
-  }, [accessToken]);
+  }, [accessToken, user, setSession]);
 
   useEffect(() => {
     if (!accessToken) {
@@ -49,8 +59,9 @@ export function useTokenRefresh(): void {
       refreshToken();
     }, 10 * 60 * 1000); // 10 minutes
 
-    // Refresh immediately on mount to ensure token is fresh
-    refreshToken();
+    // DO NOT refresh immediately on mount — the token is fresh from login
+    // Only start the interval, which will refresh after 10 minutes
+    console.log('[TokenRefresh] Token refresh interval started (will refresh in 10 minutes)');
 
     return () => {
       if (intervalRef.current) {

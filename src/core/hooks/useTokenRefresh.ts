@@ -33,7 +33,8 @@ export function useTokenRefresh(): void {
       const { accessToken: newAccessToken, refreshToken: newRefreshToken } = unwrap(res);
       
       // Guardar los nuevos tokens en el store y secure storage
-      setSession(user, newAccessToken, newRefreshToken);
+      // IMPORTANTE: Esperar a que se complete
+      await setSession(user, newAccessToken, newRefreshToken);
       
       console.log('[TokenRefresh] Token refreshed successfully and saved to store');
     } catch (error) {

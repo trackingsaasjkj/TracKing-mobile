@@ -173,15 +173,14 @@ apiClient.interceptors.response.use(
         if (newAccessToken && newRefreshToken) {
           const authStore = getAuthStore();
           if (authStore.user) {
-            authStore.setSession(authStore.user, newAccessToken, newRefreshToken);
+            // IMPORTANTE: Esperar a que setSession se complete
+            // Esto asegura que los tokens se guarden en secure storage antes de continuar
+            await authStore.setSession(authStore.user, newAccessToken, newRefreshToken);
             console.log('[Refresh] Token updated successfully in store and secure storage');
           }
         } else {
           throw new Error('Refresh token response missing accessToken or refreshToken');
         }
-        
-        // Esperar a que los tokens se guarden en secure storage
-        await new Promise(resolve => setTimeout(resolve, 10));
         
         // Re-read current token from store en memoria (ahora es el nuevo token)
         const currentToken = getAuthStore().accessToken ?? '';
@@ -195,7 +194,7 @@ apiClient.interceptors.response.use(
       } catch (refreshError) {
         console.error('[Refresh] Failed to refresh token:', refreshError);
         processQueue(refreshError, null);
-        getAuthStore().clearSession();
+        await getAuthStore().clearSession();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

@@ -16,7 +16,7 @@ export function useLogout() {
     } catch {
       // Even if the API call fails, clear local session
     } finally {
-      clearSession();
+      await clearSession();
       setIsLoading(false);
     }
   }

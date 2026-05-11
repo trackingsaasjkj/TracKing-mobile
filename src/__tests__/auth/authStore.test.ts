@@ -46,18 +46,18 @@ describe('authStore — setSession', () => {
     useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
   });
 
-  it('autentica al usuario y guarda el token', () => {
+  it('autentica al usuario y guarda el token', async () => {
     const user = makeUser();
-    useAuthStore.getState().setSession(user, 'token-abc');
+    await useAuthStore.getState().setSession(user, 'token-abc');
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(true);
     expect(state.user?.email).toBe('carlos@empresa.com');
     expect(state.accessToken).toBe('token-abc');
   });
 
-  it('preserva todos los campos del usuario', () => {
+  it('preserva todos los campos del usuario', async () => {
     const user = makeUser({ operationalStatus: 'IN_SERVICE' });
-    useAuthStore.getState().setSession(user, 'tok');
+    await useAuthStore.getState().setSession(user, 'tok');
     expect(useAuthStore.getState().user?.operationalStatus).toBe('IN_SERVICE');
   });
 });
@@ -69,9 +69,9 @@ describe('authStore — clearSession', () => {
     useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
   });
 
-  it('limpia el estado completamente', () => {
-    useAuthStore.getState().setSession(makeUser(), 'token-abc');
-    useAuthStore.getState().clearSession();
+  it('limpia el estado completamente', async () => {
+    await useAuthStore.getState().setSession(makeUser(), 'token-abc');
+    await useAuthStore.getState().clearSession();
     const state = useAuthStore.getState();
     expect(state.isAuthenticated).toBe(false);
     expect(state.user).toBeNull();
@@ -86,14 +86,14 @@ describe('authStore — setOperationalStatus', () => {
     useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
   });
 
-  it('actualiza el estado operacional del usuario', () => {
-    useAuthStore.getState().setSession(makeUser(), 'tok');
+  it('actualiza el estado operacional del usuario', async () => {
+    await useAuthStore.getState().setSession(makeUser(), 'tok');
     useAuthStore.getState().setOperationalStatus('AVAILABLE');
     expect(useAuthStore.getState().user?.operationalStatus).toBe('AVAILABLE');
   });
 
-  it('acepta IN_SERVICE sin convertirlo (fix BUG-tracking)', () => {
-    useAuthStore.getState().setSession(makeUser(), 'tok');
+  it('acepta IN_SERVICE sin convertirlo (fix BUG-tracking)', async () => {
+    await useAuthStore.getState().setSession(makeUser(), 'tok');
     useAuthStore.getState().setOperationalStatus('IN_SERVICE');
     expect(useAuthStore.getState().user?.operationalStatus).toBe('IN_SERVICE');
   });
@@ -103,9 +103,9 @@ describe('authStore — setOperationalStatus', () => {
     expect(useAuthStore.getState().user).toBeNull();
   });
 
-  it('no modifica otros campos del usuario al cambiar status', () => {
+  it('no modifica otros campos del usuario al cambiar status', async () => {
     const user = makeUser({ name: 'Carlos', company_id: 'co-99' });
-    useAuthStore.getState().setSession(user, 'tok');
+    await useAuthStore.getState().setSession(user, 'tok');
     useAuthStore.getState().setOperationalStatus('AVAILABLE');
     const updated = useAuthStore.getState().user!;
     expect(updated.name).toBe('Carlos');
@@ -116,15 +116,15 @@ describe('authStore — setOperationalStatus', () => {
 // ─── PBT: setSession → clearSession → isAuthenticated = false ────────────────
 
 describe('P-1: round-trip setSession → clearSession (PBT)', () => {
-  it('P-1: siempre termina en isAuthenticated=false tras clearSession', () => {
+  it('P-1: siempre termina en isAuthenticated=false tras clearSession', async () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 50 }),
         fc.string({ minLength: 10, maxLength: 100 }),
-        (name, token) => {
+        async (name, token) => {
           useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
-          useAuthStore.getState().setSession(makeUser({ name }), token);
-          useAuthStore.getState().clearSession();
+          await useAuthStore.getState().setSession(makeUser({ name }), token);
+          await useAuthStore.getState().clearSession();
           expect(useAuthStore.getState().isAuthenticated).toBe(false);
           expect(useAuthStore.getState().user).toBeNull();
         },
@@ -137,14 +137,14 @@ describe('P-1: round-trip setSession → clearSession (PBT)', () => {
 // ─── PBT: setOperationalStatus preserva identidad del usuario ─────────────────
 
 describe('P-2: setOperationalStatus nunca corrompe otros campos (PBT)', () => {
-  it('P-2: cualquier status válido preserva id, email y company_id', () => {
+  it('P-2: cualquier status válido preserva id, email y company_id', async () => {
     fc.assert(
       fc.property(
         fc.constantFrom('AVAILABLE', 'UNAVAILABLE', 'IN_SERVICE') as fc.Arbitrary<OperationalStatus>,
-        (status) => {
+        async (status) => {
           const user = makeUser({ id: 'fixed-id', email: 'fixed@test.com', company_id: 'fixed-co' });
           useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
-          useAuthStore.getState().setSession(user, 'tok');
+          await useAuthStore.getState().setSession(user, 'tok');
           useAuthStore.getState().setOperationalStatus(status);
           const updated = useAuthStore.getState().user!;
           expect(updated.id).toBe('fixed-id');

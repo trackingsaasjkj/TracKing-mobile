@@ -19,7 +19,14 @@ export const WORKDAY_BACKGROUND_TASK = 'workday-background-location';
  *
  * Uses sendFromBackground() which reads the JWT from Zustand first (in-memory),
  * then falls back to SecureStore (persisted to disk). This ensures the token
- * is available even if the app closes before secureStorage.setToken() completes.
+ * is available even if the app closes before secureStorage.setAccessToken() completes.
+ *
+ * Token refresh:
+ * - If the access token expires (401), sendFromBackground() automatically attempts
+ *   to refresh the token using the refresh token from SecureStore
+ * - If refresh succeeds, retries sending the location with the new token
+ * - If refresh fails, the task logs the error but continues running
+ *   (the next location update will try again)
  */
 TaskManager.defineTask(
   WORKDAY_BACKGROUND_TASK,
@@ -63,9 +70,10 @@ TaskManager.defineTask(
         timestamp,
       });
 
-      // 401 = session expired — stop the task
+      // 401 = session expired and refresh failed — stop the task
+      // (sendFromBackground already attempted to refresh, so if we still get 401, it's unrecoverable)
       if (err?.status === 401) {
-        console.warn('[WorkdayTracking] Session expired (401), stopping task');
+        console.warn('[WorkdayTracking] Session expired (401) and refresh failed, stopping task');
         const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
           WORKDAY_BACKGROUND_TASK,
         ).catch(() => false);
@@ -74,6 +82,7 @@ TaskManager.defineTask(
         }
       }
       // All other errors (network, timeout, 400) are logged but not fatal
+      // The task will continue running and retry on the next location update
     }
   },
 );

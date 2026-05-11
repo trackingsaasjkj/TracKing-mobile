@@ -64,13 +64,13 @@ export function useLogin(): UseLoginResult {
       console.log('[Login] Saving tokens to store');
       console.log('[Login] accessToken:', userData.accessToken?.substring(0, 20) + '...');
       console.log('[Login] refreshToken:', userData.refreshToken?.substring(0, 20) + '...');
-      setSession(user, userData.accessToken, userData.refreshToken);
+      await setSession(user, userData.accessToken, userData.refreshToken);
 
       // Fetch real operational status — login response doesn't include it
       try {
         const profile = await dashboardApi.getProfile();
         user.operationalStatus = profile.operational_status;
-        setSession(user, userData.accessToken, userData.refreshToken);
+        await setSession(user, userData.accessToken, userData.refreshToken);
       } catch {
         // Non-critical: useDashboard will sync it on mount
       }

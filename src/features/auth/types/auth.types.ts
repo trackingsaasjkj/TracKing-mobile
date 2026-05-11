@@ -14,8 +14,8 @@ export interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   isAuthenticated: boolean;
-  setSession: (user: CourierUser, token: string, refreshToken?: string) => void;
-  clearSession: () => void;
+  setSession: (user: CourierUser, token: string, refreshToken?: string) => Promise<void>;
+  clearSession: () => Promise<void>;
   setOperationalStatus: (status: OperationalStatus) => void;
 }
 

@@ -1,0 +1,6 @@
+# pnpm-workspace.yaml — proyecto standalone (sin subpaquetes)
+# Lista blanca de scripts de build/postinstall para el proyecto mobile.
+allowBuilds:
+  '@firebase/util': true
+  protobufjs: true
+  '@scarf/scarf': false

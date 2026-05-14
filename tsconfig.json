@@ -5,6 +5,8 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
-    }
-  }
+    },
+    "types": ["jest", "react", "react-native"]
+  },
+  "include": ["src", "index.ts", "jest.config.js", "jest.setup.js"]
 }

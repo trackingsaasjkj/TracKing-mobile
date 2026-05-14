@@ -24,9 +24,13 @@ jest.mock('@/features/auth/api/authApi', () => ({
 
 jest.mock('@/core/storage/secureStorage', () => ({
   secureStorage: {
-    setToken: jest.fn(),
-    clearToken: jest.fn(),
-    getToken: jest.fn().mockResolvedValue(null),
+    setAccessToken: jest.fn(),
+    getAccessToken: jest.fn().mockResolvedValue(null),
+    clearAccessToken: jest.fn(),
+    setRefreshToken: jest.fn(),
+    getRefreshToken: jest.fn().mockResolvedValue(null),
+    clearRefreshToken: jest.fn(),
+    clearAllTokens: jest.fn().mockResolvedValue(undefined),
   },
 }));
 

@@ -25,6 +25,7 @@
     "axios": "1.16.1",
     "expo": "~55.0.19",
     "expo-camera": "~55.0.16",
+    "expo-image-manipulator": "~13.0.6",
     "expo-location": "~55.1.8",
     "expo-secure-store": "~55.0.13",
     "expo-status-bar": "~55.0.5",

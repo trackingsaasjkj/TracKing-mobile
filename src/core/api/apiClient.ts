@@ -10,7 +10,7 @@ import { handleApiError } from '@/shared/utils/errorHandler';
  * Desarrollo: http://192.168.1.2:3000 (reemplaza con tu IP local)
  * Producción: https://tracking-backend-g4mq.onrender.com
  */
-const BASE_URL = 'http://192.168.1.2:3000';
+const BASE_URL = 'http://192.168.1.5:3000';
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {

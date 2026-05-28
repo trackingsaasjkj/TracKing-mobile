@@ -4,11 +4,13 @@ import { useTheme } from '@/shared/ui/useTheme';
 import { ServicesScreen } from '../screens/ServicesScreen';
 import { ServiceDetailScreen } from '../screens/ServiceDetailScreen';
 import { ServiceHistoryScreen } from '../screens/ServiceHistoryScreen';
+import { RouteDetailScreen } from '@/features/routes/screens/RouteDetailScreen';
 
 export type ServicesStackParamList = {
   ServicesList: undefined;
   ServiceDetail: { serviceId: string };
   ServiceHistory: undefined;
+  RouteDetail: { routeId?: string } | undefined;
 };
 
 const Stack = createNativeStackNavigator<ServicesStackParamList>();
@@ -36,6 +38,11 @@ export function ServicesNavigator() {
         name="ServiceHistory"
         component={ServiceHistoryScreen}
         options={{ title: 'Historial de servicios', headerShown: false }}
+      />
+      <Stack.Screen
+        name="RouteDetail"
+        component={RouteDetailScreen}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

@@ -17,6 +17,8 @@ import { ServiceCard } from '../components/ServiceCard';
 import { useServices, canTransition } from '../hooks/useServices';
 import type { Service } from '../types/services.types';
 import type { ServicesStackParamList } from '../navigation/ServicesNavigator';
+import { useActiveRoute } from '@/features/routes/hooks/useActiveRoute';
+import { RouteActiveBanner } from '@/features/routes/components/RouteBadge';
 
 type Nav = NativeStackNavigationProp<ServicesStackParamList, 'ServicesList'>;
 
@@ -35,6 +37,11 @@ export function ServicesScreen() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0, width: 0 });
   const menuBtnRef = useRef<RNView>(null);
+
+  const { route: activeRoute } = useActiveRoute();
+  const completedInRoute = activeRoute
+    ? activeRoute.stops.filter((s) => s.status === 'COMPLETED').length
+    : 0;
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} onRetry={refresh} />;
@@ -102,12 +109,22 @@ export function ServicesScreen() {
       <FlatList
         data={activeServices}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          activeRoute && !showCompleted ? (
+            <RouteActiveBanner
+              completedStops={completedInRoute}
+              totalStops={activeRoute.total_stops}
+              onPress={() => navigation.navigate('RouteDetail' as any)}
+            />
+          ) : null
+        }
         renderItem={({ item }) => (
           <ServiceCard
             service={item}
             onPress={() => navigation.navigate('ServiceDetail', { serviceId: item.id })}
             onAction={canTransition(item.status) ? () => handleAction(item) : undefined}
             actionLoading={actionLoading === item.id}
+            onRoutePress={item.routeStop ? () => navigation.navigate('RouteDetail' as any) : undefined}
           />
         )}
         contentContainerStyle={styles.list}

@@ -7,6 +7,8 @@ import { shadows } from '@/shared/ui/shadows';
 import { Button } from '@/shared/ui/components/Button';
 import { StatusBadge } from './StatusBadge';
 import { ContactsMenu } from './ContactsMenu';
+import { getPaymentLabel } from '../utils/paymentLabel';
+import { RouteBadge } from '@/features/routes/components/RouteBadge';
 import type { Service } from '../types/services.types';
 
 interface ServiceCardProps {
@@ -14,13 +16,8 @@ interface ServiceCardProps {
   onPress: () => void;
   onAction?: () => void;
   actionLoading?: boolean;
+  onRoutePress?: () => void;
 }
-
-const PAYMENT_LABEL: Record<string, string> = {
-  CASH: 'Pago en efectivo',
-  TRANSFER: 'Transferencia',
-  CREDIT: 'Crédito',
-};
 
 function useCardColors() {
   const { colors } = useTheme();
@@ -69,7 +66,7 @@ function RouteBlock({ origin, destination }: { origin: string; destination: stri
   );
 }
 
-export function ServiceCard({ service, onPress, onAction, actionLoading }: ServiceCardProps) {
+export function ServiceCard({ service, onPress, onAction, actionLoading, onRoutePress }: ServiceCardProps) {
   const { colors } = useTheme();
   const isActive = service.status === 'IN_TRANSIT' || service.status === 'ACCEPTED';
   const isCompleted = service.status === 'DELIVERED';
@@ -122,10 +119,15 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
           )}
         </View>
         <RouteBlock origin={service.origin_address} destination={service.destination_address} />
+        {service.routeStop && onRoutePress && (
+          <View style={{ marginBottom: spacing.sm }}>
+            <RouteBadge totalStops={service.routeStop.route.total_stops} onPress={onRoutePress} />
+          </View>
+        )}
         <View style={styles.footer}>
           <ClientRow
             name={service.destination_name}
-            sub={PAYMENT_LABEL[service.payment_method] ?? service.payment_method}
+            sub={getPaymentLabel(service)}
           />
         </View>
       </TouchableOpacity>
@@ -155,9 +157,14 @@ export function ServiceCard({ service, onPress, onAction, actionLoading }: Servi
         )}
       </View>
       <RouteBlock origin={service.origin_address} destination={service.destination_address} />
+      {service.routeStop && onRoutePress && (
+        <View style={{ marginBottom: spacing.md }}>
+          <RouteBadge totalStops={service.routeStop.route.total_stops} onPress={onRoutePress} />
+        </View>
+      )}
       <ClientRow
         name={service.destination_name}
-        sub={PAYMENT_LABEL[service.payment_method] ?? service.payment_method}
+        sub={getPaymentLabel(service)}
       />
       {isPending && (
         <View style={[styles.pendingActions, { borderTopColor: colors.neutral100 }]}>

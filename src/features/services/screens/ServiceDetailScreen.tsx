@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import type { NativeStackScreenProps, NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
@@ -164,6 +165,20 @@ export function ServiceDetailScreen() {
             </View>
           )}
         </View>
+
+        {service.routeStop && (
+          <TouchableOpacity
+            style={[styles.routeLinkSection, { backgroundColor: colors.primaryBg, borderColor: colors.primaryLight }]}
+            onPress={() => navigation.navigate('RouteDetail' as any)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="git-branch-outline" size={18} color={colors.primary} />
+            <Text style={[styles.routeLinkText, { color: colors.primary }]}>
+              Esta entrega es parte de una ruta ({service.routeStop.route.total_stops} paradas)
+            </Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        )}
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.neutral500 }]}>Paquete</Text>
@@ -332,6 +347,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   contactsLabel: { fontSize: fontSize.sm },
+  routeLinkSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+  },
+  routeLinkText: { fontSize: fontSize.sm, fontWeight: fontWeight.semibold, flex: 1 },
 });
 
 const modalStyles = StyleSheet.create({

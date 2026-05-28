@@ -15,6 +15,7 @@ import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
 import { servicesApi } from '@/features/services/api/servicesApi';
+import { getPaymentLabel } from '@/features/services/utils/paymentLabel';
 import type { Service } from '@/features/services/types/services.types';
 import type { Settlement } from '../api/earningsApi';
 
@@ -51,12 +52,6 @@ function isInRange(service: Service, start: string, end: string): boolean {
   const ts = new Date(d).getTime();
   return ts >= new Date(start).getTime() && ts <= new Date(end).getTime();
 }
-
-const PAYMENT_LABEL: Record<string, string> = {
-  CASH: 'Efectivo',
-  TRANSFER: 'Transferencia',
-  CREDIT: 'Crédito',
-};
 
 // ─── Service item ─────────────────────────────────────────────────────────────
 
@@ -96,7 +91,7 @@ function ServiceItem({ item, index }: { item: Service; index: number }) {
         <View style={itemStyles.metaRow}>
           <Ionicons name="person-outline" size={12} color={colors.neutral500} />
           <Text style={[itemStyles.metaText, { color: colors.neutral500 }]}>
-            {item.destination_name} · {PAYMENT_LABEL[item.payment_method] ?? item.payment_method}
+            {item.destination_name} · {getPaymentLabel(item)}
           </Text>
         </View>
       </View>

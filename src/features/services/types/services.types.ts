@@ -1,6 +1,22 @@
+// Mobile: types actualizados para usar paymentMethod como objeto en lugar de enum fijo
 export type ServiceStatus = 'PENDING' | 'ASSIGNED' | 'ACCEPTED' | 'IN_TRANSIT' | 'DELIVERED' | 'CANCELLED';
-export type PaymentMethod = 'CASH' | 'TRANSFER' | 'CREDIT';
-export type PaymentStatus = 'PAID' | 'UNPAID';
+export type PaymentStatus = 'PAID' | 'UNPAID' | 'REFUNDED';
+
+/** Método de pago como objeto (viene de la tabla payment_method) */
+export interface PaymentMethodEntity {
+  id: string;
+  name: string;
+  code: string;
+  requires_credit: boolean;
+}
+
+export interface RouteStopRef {
+  id: string;
+  route: {
+    id: string;
+    total_stops: number;
+  };
+}
 
 export interface Service {
   id: string;
@@ -13,7 +29,10 @@ export interface Service {
   /** Phone number of the customer who placed the order */
   origin_contact_phone?: string;
   package_details: string;
-  payment_method: PaymentMethod;
+  /** FK al método de pago (UUID) */
+  payment_method_id?: string | null;
+  /** Objeto del método de pago (incluido en el SELECT del backend) */
+  paymentMethod?: PaymentMethodEntity | null;
   payment_status: PaymentStatus;
   is_settled_courier: boolean;
   is_settled_customer: boolean;
@@ -37,6 +56,8 @@ export interface Service {
     name: string;
     phone?: string;
   };
+  // Route association (present when service belongs to a multi-stop route)
+  routeStop?: RouteStopRef | null;
 }
 
 export interface PaginatedResponse<T> {

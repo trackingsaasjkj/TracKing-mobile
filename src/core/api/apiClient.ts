@@ -10,7 +10,9 @@ import { handleApiError } from '@/shared/utils/errorHandler';
  * Desarrollo: http://192.168.1.2:3000 (reemplaza con tu IP local)
  * Producción: https://tracking-backend-g4mq.onrender.com
  */
-const BASE_URL = 'http://192.168.1.5:3000';
+// 🔧 CAMBIAR ESTA IP por la IPv4 de tu PC en la red local (ver con `ipconfig`)
+// Producción: 'https://tracking-backend-g4mq.onrender.com'
+const BASE_URL = 'http://192.168.1.12:3000';
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {
@@ -79,7 +81,7 @@ function processQueue(error: unknown, token: string | null) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse) => {
     // NO transformar la respuesta aquí
     // Dejar que la respuesta sea exactamente como viene del backend
     // El cliente (authApi, etc) usará unwrap() si necesita extraer data

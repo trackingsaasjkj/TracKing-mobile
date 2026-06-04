@@ -4,3 +4,4 @@ allowBuilds:
   '@firebase/util': true
   protobufjs: true
   '@scarf/scarf': false
+  msgpackr-extract: true

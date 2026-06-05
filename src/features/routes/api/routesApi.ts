@@ -9,6 +9,6 @@ export const routesApi = {
 
   completeStop: (routeId: string, stopId: string, data: CompleteStopPayload): Promise<void> =>
     apiClient
-      .patch<ApiResponse<void>>(`/api/rutas/${routeId}/stops/${stopId}/complete`, data)
+      .patch<ApiResponse<void>>(`/api/routes/${routeId}/stops/${stopId}/complete`, data)
       .then(unwrap),
 }

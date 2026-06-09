@@ -25,6 +25,12 @@ function StopStatusIcon({ status }: { status: RouteStopStatus }) {
 
 export function RouteStopItem({ stop, isActive, isLast, onComplete, completing }: RouteStopItemProps) {
   const { colors } = useTheme()
+  
+  // Defensive check
+  if (!stop) {
+    return null
+  }
+  
   const isCompleted = stop.status === 'COMPLETED'
   const isPickup = stop.stop_type === 'PICKUP'
 

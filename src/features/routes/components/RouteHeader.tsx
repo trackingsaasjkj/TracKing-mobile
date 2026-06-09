@@ -12,8 +12,21 @@ interface RouteHeaderProps {
 
 export function RouteHeader({ route }: RouteHeaderProps) {
   const { colors } = useTheme()
-  const completedStops = route.stops.filter((s) => s.status === 'COMPLETED').length
-  const progress = route.total_stops > 0 ? (completedStops / route.total_stops) * 100 : 0
+  
+  // Defensive checks for undefined/null data
+  if (!route) {
+    return (
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
+        <Text style={[styles.statusText, { color: colors.neutral500 }]}>
+          Cargando ruta...
+        </Text>
+      </View>
+    )
+  }
+
+  const stops = Array.isArray(route.stops) ? route.stops : []
+  const completedStops = stops.filter((s) => s && s.status === 'COMPLETED').length
+  const progress = (route.total_stops ?? 0) > 0 ? (completedStops / (route.total_stops ?? 1)) * 100 : 0
   const routeTypeLabel = route.route_type === 'DISTRIBUTION' ? 'Distribución' : 'Recolección'
 
   const statusConfig: Record<string, { label: string; color: string; bg: string }> = {

@@ -34,10 +34,26 @@ export function useAutoRefresh(
   const appState = useRef<AppStateStatus>(AppState.currentState);
   const retryCountRef = useRef(0);
 
-  const triggerRefresh = useCallback(async () => {
+  const triggerRefresh = useCallback(() => {
     try {
-      await onRefreshRef.current();
+      const result = onRefreshRef.current();
       retryCountRef.current = 0; // Reset retry counter on success
+      
+      // Handle both sync and async callbacks
+      if (result instanceof Promise) {
+        result.catch((error) => {
+          // Retry logic: if refresh fails, retry up to maxRetries times
+          if (retryCountRef.current < maxRetries) {
+            retryCountRef.current += 1;
+            // Retry after a short delay (exponential backoff: 1s, 2s, 4s)
+            const retryDelay = Math.min(1000 * Math.pow(2, retryCountRef.current - 1), 4000);
+            setTimeout(() => {
+              triggerRefresh();
+            }, retryDelay);
+          }
+          // If max retries exceeded, just wait for next interval
+        });
+      }
     } catch (error) {
       // Retry logic: if refresh fails, retry up to maxRetries times
       if (retryCountRef.current < maxRetries) {

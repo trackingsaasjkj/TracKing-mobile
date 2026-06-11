@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React from 'react'
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, ScrollView,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRoute, useNavigation } from '@react-navigation/native'
@@ -14,7 +14,8 @@ import { ErrorState } from '@/shared/components/ErrorState'
 import { useActiveRoute } from '../hooks/useActiveRoute'
 import { useCompleteStop } from '../hooks/useCompleteStop'
 import { RouteStopItem } from '../components/RouteStopItem'
-import type { RouteStop } from '../types/routes.types'
+import { RouteMap } from '../components/RouteMap'
+import type { StopCompletionData } from '../components/CompleteStopModal'
 
 type RouteParams = { routeId?: string }
 type Nav = NativeStackNavigationProp<any>
@@ -41,9 +42,15 @@ export function RouteDetailScreen() {
   const route = useRoute<NativeStackScreenProps<any, any>['route']>()
   const navigation = useNavigation<Nav>()
   const { colors } = useTheme()
-  const { route: activeRoute, isLoading, isError, error, refresh } = useActiveRoute()
+  const routeId = (route.params as RouteParams)?.routeId
+  const { route: activeRoute, isLoading, isError, error, refresh } = useActiveRoute(routeId)
   const { execute: completeStop } = useCompleteStop()
-  const [completingId, setCompletingId] = useState<string | null>(null)
+
+  const handleCompleted = async (stopId: string, data: StopCompletionData) => {
+    if (!activeRoute) return
+    const result = await completeStop(activeRoute.id, stopId, data)
+    if (!result.ok) throw new Error(result.error ?? 'Error al completar la parada')
+  }
 
   if (isLoading) return <LoadingSpinner />
   if (isError) return <ErrorState message={error ?? 'Error al cargar la ruta'} onRetry={refresh} />
@@ -64,24 +71,6 @@ export function RouteDetailScreen() {
         </View>
       </SafeAreaView>
     )
-  }
-
-  const handleComplete = async (stop: RouteStop) => {
-    setCompletingId(stop.id)
-    try {
-      const result = await completeStop?.(activeRoute.id, stop.id, {
-        latitude: 0,
-        longitude: 0,
-        notes: undefined,
-      })
-      if (result && !result.ok) {
-        Alert.alert('Error', result.error ?? 'No se pudo completar la parada')
-      }
-    } catch (err) {
-      Alert.alert('Error', 'No se pudo completar la parada')
-    } finally {
-      setCompletingId(null)
-    }
   }
 
   // Calculate derived values safely
@@ -123,6 +112,13 @@ export function RouteDetailScreen() {
             <Text style={[styles.typeText, { color: colors.neutral600 }]}>{routeTypeLabel}</Text>
           </View>
         </View>
+
+        {/* Map — shows all stops, active stop highlighted, courier position live */}
+        {stops.length > 0 && (
+          <View style={styles.mapContainer}>
+            <RouteMap stops={stops} activeStopIndex={activeIndex >= 0 ? activeIndex : 0} />
+          </View>
+        )}
 
         {/* Route Info Section */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -179,12 +175,8 @@ export function RouteDetailScreen() {
                 stop={stop}
                 isActive={index === activeIndex}
                 isLast={index === stops.length - 1}
-                onComplete={
-                  index === activeIndex && !isRouteComplete
-                    ? () => handleComplete(stop)
-                    : undefined
-                }
-                completing={completingId === stop.id}
+                routeId={activeRoute.id}
+                onCompleted={handleCompleted}
               />
             ))
           )}
@@ -199,6 +191,10 @@ export function RouteDetailScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1 },
   scroll: { flex: 1 },
+  mapContainer: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',

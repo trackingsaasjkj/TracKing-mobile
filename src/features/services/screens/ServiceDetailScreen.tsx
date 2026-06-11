@@ -169,7 +169,7 @@ export function ServiceDetailScreen() {
         {service.routeStop && (
           <TouchableOpacity
             style={[styles.routeLinkSection, { backgroundColor: colors.primaryBg, borderColor: colors.primaryLight }]}
-            onPress={() => navigation.navigate('RouteDetail' as any)}
+            onPress={() => navigation.navigate('RouteDetail' as any, { routeId: service.routeStop.route.id })}
             activeOpacity={0.8}
           >
             <Ionicons name="git-branch-outline" size={18} color={colors.primary} />

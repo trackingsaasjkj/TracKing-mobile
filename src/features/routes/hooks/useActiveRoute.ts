@@ -3,29 +3,35 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import { routesApi } from '../api/routesApi'
 import { useRoutesStore } from '../store/routesStore'
 import { useAutoRefresh } from '@/core/hooks/useAutoRefresh'
+import { useRouteUpdates } from './useRouteUpdates'
 
-export function useActiveRoute() {
+/**
+ * Fetches a route by its ID. The routeId comes from the active service's
+ * routeStop.route_id field (ServiceDetailScreen passes it via navigation).
+ */
+export function useActiveRoute(routeId?: string) {
   const { setActiveRoute, clearActiveRoute } = useRoutesStore()
   const queryClient = useQueryClient()
 
+  // Subscribe to real-time WS events for this route
+  useRouteUpdates(routeId)
+
   const query = useQuery({
-    queryKey: ['courier-active-route'],
+    queryKey: ['courier-active-route', routeId],
     queryFn: async () => {
-      const data = await routesApi.getActiveRoute()
-      if (data) {
-        setActiveRoute(data)
-      } else {
-        clearActiveRoute()
-      }
+      if (!routeId) return null
+      const data = await routesApi.getRoute(routeId)
+      setActiveRoute(data)
       return data
     },
+    enabled: !!routeId,
     placeholderData: keepPreviousData,
     staleTime: 15_000,
   })
 
   const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['courier-active-route'] })
-  }, [queryClient])
+    queryClient.invalidateQueries({ queryKey: ['courier-active-route', routeId] })
+  }, [queryClient, routeId])
 
   useAutoRefresh(refresh, { foregroundInterval: 15_000 })
 
@@ -34,7 +40,7 @@ export function useActiveRoute() {
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.isError
-      ? (query.error as any)?.userMessage ?? 'Error al cargar ruta activa'
+      ? (query.error as any)?.userMessage ?? 'Error al cargar ruta'
       : null,
     refresh,
   }

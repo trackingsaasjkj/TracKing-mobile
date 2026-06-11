@@ -30,12 +30,15 @@ export interface Route {
 export interface RouteStop {
   id: string
   sequence_order: number
-  service_id: string
+  service_id?: string
   address: string
   lat: number
   lng: number
   stop_type: RouteStopType
   status: RouteStopStatus
+  contact_name?: string
+  contact_phone?: string
+  package_details?: string
   arrival_time?: string
   completion_time?: string
   notes?: string

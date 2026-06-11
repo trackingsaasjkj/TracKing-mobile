@@ -4,6 +4,7 @@ import { servicesApi } from '../api/servicesApi';
 import { useServicesStore } from '../store/servicesStore';
 import { useAutoRefresh } from '@/core/hooks/useAutoRefresh';
 import { useServiceUpdates } from './useServiceUpdates';
+import { useLoadActiveRoute } from '@/features/routes/hooks/useLoadActiveRoute';
 import type { Service, ServiceStatus } from '../types/services.types';
 
 const NEXT_STATUS: Partial<Record<ServiceStatus, ServiceStatus>> = {
@@ -46,6 +47,9 @@ export function useServices() {
 
   // Layer 1: WebSocket + FCM real-time updates (< 50ms)
   useServiceUpdates();
+
+  // Layer 1b: Load active route on session start (handles pre-existing assignments)
+  useLoadActiveRoute();
 
   // Layer 2: Polling fallback every 15s (covers WS downtime, faster than 45s)
   useAutoRefresh(refresh, { foregroundInterval: 15_000 });

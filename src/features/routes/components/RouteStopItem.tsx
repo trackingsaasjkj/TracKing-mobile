@@ -17,12 +17,13 @@ interface RouteStopItemProps {
   onCompleted: (stopId: string, data: StopCompletionData) => Promise<void>
 }
 
-function StopStatusIcon({ status }: { status: RouteStopStatus }) {
+function StopStatusIcon({ status, isPickup }: { status: RouteStopStatus, isPickup: boolean }) {
   const { colors } = useTheme()
+  const iconColor = isPickup ? colors.success : colors.danger
   if (status === 'COMPLETED') {
-    return <Ionicons name="checkmark-circle" size={22} color={colors.success} />
+    return <Ionicons name="checkmark-circle" size={22} color={iconColor} />
   }
-  return <Ionicons name="ellipse-outline" size={22} color={colors.neutral400} />
+  return <Ionicons name="ellipse-outline" size={22} color={iconColor} />
 }
 
 function ContactActions({ phone }: { phone: string }) {
@@ -82,9 +83,9 @@ export function RouteStopItem({ stop, isActive, isLast, routeId, onCompleted }: 
       <View style={styles.container}>
         {/* Timeline column */}
         <View style={styles.timelineCol}>
-          <StopStatusIcon status={stop.status} />
+          <StopStatusIcon status={stop.status} isPickup={isPickup} />
           {!isLast && (
-            <View style={[styles.connector, { backgroundColor: isCompleted ? colors.success : colors.neutral200 }]} />
+            <View style={[styles.connector, { backgroundColor: isCompleted ? (isPickup ? colors.success : colors.danger) : colors.neutral200 }]} />
           )}
         </View>
 
@@ -92,8 +93,8 @@ export function RouteStopItem({ stop, isActive, isLast, routeId, onCompleted }: 
         <View style={[styles.content, { backgroundColor: colors.surface, shadowColor: colors.black }]}>
           {/* Header row */}
           <View style={styles.header}>
-            <View style={[styles.typeBadge, { backgroundColor: isPickup ? colors.warningBg : colors.infoBg }]}>
-              <Text style={[styles.typeText, { color: isPickup ? colors.warningText : colors.infoText }]}>
+            <View style={[styles.typeBadge, { backgroundColor: isPickup ? colors.successBg : colors.dangerBg }]}>
+              <Text style={[styles.typeText, { color: isPickup ? colors.successText : colors.dangerText }]}>
                 {isPickup ? 'RECOGIDA' : 'ENTREGA'}
               </Text>
             </View>
@@ -130,7 +131,7 @@ export function RouteStopItem({ stop, isActive, isLast, routeId, onCompleted }: 
                 label={isPickup ? 'Confirmar recogida' : 'Confirmar entrega'}
                 onPress={() => setModalVisible(true)}
                 size="sm"
-                variant={isPickup ? 'outline' : 'primary'}
+                variant={isPickup ? 'success' : 'danger'}
                 fullWidth
               />
             </View>

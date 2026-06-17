@@ -42,6 +42,8 @@ export function RouteMap({ stops, activeStopIndex }: RouteMapProps) {
   const frozenStops = useRef(stops)
   const frozenPrimary = useRef(colors.primary)
   const frozenWhite = useRef(colors.white)
+  const frozenSuccess = useRef(colors.success)
+  const frozenDanger = useRef(colors.danger)
 
   const mapHtml = useMemo(
     () =>
@@ -52,6 +54,8 @@ export function RouteMap({ stops, activeStopIndex }: RouteMapProps) {
         courierLng ?? null,
         frozenPrimary.current,
         frozenWhite.current,
+        frozenSuccess.current,
+        frozenDanger.current,
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [], // built once — updates go through postMessage
@@ -128,6 +132,8 @@ function buildRouteMapHtml(
   courierLng: number | null,
   primaryColor: string,
   borderColor: string,
+  successColor: string,
+  dangerColor: string,
 ): string {
   if (!stops.length) return '<html><body style="background:#111"></body></html>'
 
@@ -159,12 +165,18 @@ function buildRouteMapHtml(
   <style>
     html,body,#map { height:100%; margin:0; padding:0; }
     .leaflet-control-attribution { display:none; }
-    @keyframes pulse {
-      0%   { box-shadow: 0 0 0 0 ${primaryColor}80; }
-      70%  { box-shadow: 0 0 0 10px ${primaryColor}00; }
-      100% { box-shadow: 0 0 0 0 ${primaryColor}00; }
+    @keyframes pulse-PICKUP {
+      0%   { box-shadow: 0 0 0 0 ${successColor}80; }
+      70%  { box-shadow: 0 0 0 10px ${successColor}00; }
+      100% { box-shadow: 0 0 0 0 ${successColor}00; }
     }
-    .active-stop { animation: pulse 1.8s infinite; }
+    @keyframes pulse-DELIVERY {
+      0%   { box-shadow: 0 0 0 0 ${dangerColor}80; }
+      70%  { box-shadow: 0 0 0 10px ${dangerColor}00; }
+      100% { box-shadow: 0 0 0 0 ${dangerColor}00; }
+    }
+    .active-stop-PICKUP { animation: pulse-PICKUP 1.8s infinite; }
+    .active-stop-DELIVERY { animation: pulse-DELIVERY 1.8s infinite; }
   </style>
 </head>
 <body>
@@ -177,19 +189,18 @@ function buildRouteMapHtml(
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
 
     // ── Stop color logic ──────────────────────────────────────────────────
-    function stopColor(stop, idx) {
-      if (stop.status === 'COMPLETED') return '#4CAF7D'; // green
-      if (idx === activeIdx)           return '${primaryColor}';  // active — brand blue
-      return '#9CA3AF'; // grey — future stop
+    function stopColor(stop) {
+      return stop.type === 'PICKUP' ? '${successColor}' : '${dangerColor}';
     }
 
     function makeStopIcon(stop, idx) {
-      var color = stopColor(stop, idx);
+      var color = stopColor(stop);
       var size = idx === activeIdx ? 20 : 14;
       var half = size / 2;
-      var cls = idx === activeIdx ? 'active-stop' : '';
+      var opacity = stop.status === 'COMPLETED' ? 0.6 : 1;
+      var cls = idx === activeIdx ? 'active-stop-' + stop.type : '';
       var html = '<div class="' + cls + '" style="width:' + size + 'px;height:' + size + 'px;border-radius:50%;' +
-                 'background:' + color + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);' +
+                 'background:' + color + ';opacity:' + opacity + ';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);' +
                  'display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;">' +
                  stop.seq + '</div>';
       return L.divIcon({ className: '', html: html, iconSize: [size, size], iconAnchor: [half, half] });

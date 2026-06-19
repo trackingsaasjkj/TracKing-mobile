@@ -1,18 +1,8 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { handleApiError } from '@/shared/utils/errorHandler';
+import { API_BASE_URL } from './config';
 
-/**
- * Backend API URL configuration.
- * 
- * URL hardcodeada para todas las plataformas.
- * Cambiar aquí si necesitas usar un backend diferente.
- * 
- * Desarrollo: http://192.168.1.2:3000 (reemplaza con tu IP local)
- * Producción: https://tracking-backend-g4mq.onrender.com
- */
-// 🔧 CAMBIAR ESTA IP por la IPv4 de tu PC en la red local (ver con `ipconfig`)
-// Producción: 'https://tracking-backend-g4mq.onrender.com'
-const BASE_URL = 'http://192.168.1.2:3000';
+const BASE_URL = API_BASE_URL;
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {

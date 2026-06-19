@@ -92,9 +92,22 @@ export function useServiceUpdates(): void {
         });
       }
       if (partial.status === 'CANCELLED' || partial.status === 'COMPLETED') {
+        // Clear the store for both terminal statuses so the old route never
+        // lingers in the dashboard or services screen after being replaced.
+        clearActiveRoute();
+
+        // Strip routeStop from services that belonged to this route so they
+        // are no longer rendered as RouteCard items. Without this the cancelled
+        // route's services keep showing a route card even after clearActiveRoute.
+        const { services, updateService: updateSvc } = useServicesStore.getState();
+        services.forEach((s) => {
+          if (s.routeStop?.route.id === partial.id) {
+            updateSvc({ ...s, routeStop: null });
+          }
+        });
+
         queryClient.invalidateQueries({ queryKey: ['courier-services'] });
         queryClient.invalidateQueries({ queryKey: ['courier-earnings'] });
-        if (partial.status === 'CANCELLED') clearActiveRoute();
       }
     });
 
@@ -106,8 +119,21 @@ export function useServiceUpdates(): void {
         completion_time: new Date().toISOString(),
       });
       if (payload.route_status === 'COMPLETED') {
+        // All stops done — clear the active route from the store so the
+        // dashboard and services screen stop showing it immediately.
+        clearActiveRoute();
+
+        // Strip routeStop so services don't keep rendering as RouteCard
+        const { services, updateService: updateSvc } = useServicesStore.getState();
+        services.forEach((s) => {
+          if (s.routeStop?.route.id === payload.route_id) {
+            updateSvc({ ...s, routeStop: null });
+          }
+        });
+
         queryClient.invalidateQueries({ queryKey: ['courier-active-route', payload.route_id] });
         queryClient.invalidateQueries({ queryKey: ['courier-services'] });
+        queryClient.invalidateQueries({ queryKey: ['courier-earnings'] });
       }
     });
 

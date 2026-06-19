@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { dashboardApi } from '../api/dashboardApi';
 import { earningsApi } from '@/features/earnings/api/earningsApi';
+import { routesApi } from '@/features/routes/api/routesApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useServicesStore } from '@/features/services/store/servicesStore';
+import { useRoutesStore } from '@/features/routes/store/routesStore';
 import { useDashboardUpdates } from './useDashboardUpdates';
 import type { KPISummary } from '../types/dashboard.types';
 import type { Service } from '@/features/services/types/services.types';
@@ -22,6 +24,7 @@ const DEFAULT_KPIS: KPISummary = { pending: 0, inTransit: 0, completed: 0, earni
 export function useDashboard(): DashboardState {
   const setOperationalStatus = useAuthStore((s) => s.setOperationalStatus);
   const { services, setServices } = useServicesStore();
+  const { setActiveRoute, clearActiveRoute } = useRoutesStore();
   const [kpis, setKpis] = useState<KPISummary>(DEFAULT_KPIS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -37,13 +40,23 @@ export function useDashboard(): DashboardState {
       setError(null);
 
       try {
-        const [profile, svcs] = await Promise.all([
+        const [profile, svcs, activeRoute] = await Promise.all([
           dashboardApi.getProfile(),
           dashboardApi.getAssignedServices(),
+          routesApi.getActiveRoute(),
         ]);
 
         setOperationalStatus(profile.operational_status);
         setServices(svcs);
+
+        // Sync route store with the latest data from backend.
+        // This handles the case where a route was cancelled/completed and a new
+        // one was assigned — the store gets the fresh state on every refresh.
+        if (activeRoute) {
+          setActiveRoute(activeRoute);
+        } else {
+          clearActiveRoute();
+        }
 
         const computed = dashboardApi.computeKPIs(svcs);
 
@@ -64,7 +77,7 @@ export function useDashboard(): DashboardState {
         setRefreshing(false);
       }
     },
-    [setOperationalStatus, setServices],
+    [setOperationalStatus, setServices, setActiveRoute, clearActiveRoute],
   );
 
   useEffect(() => {

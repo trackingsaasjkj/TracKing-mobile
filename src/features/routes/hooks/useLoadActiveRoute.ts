@@ -11,29 +11,38 @@ import { routesApi } from '../api/routesApi'
  * a route was assigned before the app was opened, it appears immediately
  * without waiting for a WS event that already fired.
  *
- * Only runs once per session (enabled only when authenticated and route not
- * yet loaded). WS events handle subsequent updates.
+ * Runs whenever authentication state changes. Guards against re-running
+ * when there's already a non-terminal active route in the store.
  */
 export function useLoadActiveRoute(): void {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-  const { activeRoute, loaded, setActiveRoute } = useRoutesStore()
+  const { activeRoute, setActiveRoute } = useRoutesStore()
 
   useEffect(() => {
-    // Skip if not authenticated, already loaded, or route already in store
-    if (!isAuthenticated || loaded || activeRoute) return
+    if (!isAuthenticated) return
+
+    // Skip fetch only if there's already a live (non-terminal) route in the store.
+    // If the store has a COMPLETED/CANCELLED route, we still need to fetch in case
+    // a new route was assigned — the old guard (loaded flag) was preventing this.
+    const hasLiveRoute =
+      activeRoute &&
+      activeRoute.status !== 'COMPLETED' &&
+      activeRoute.status !== 'CANCELLED'
+
+    if (hasLiveRoute) return
 
     routesApi
       .getActiveRoute()
       .then((route) => {
-        if (route) setActiveRoute(route)
-        else {
-          // No active route — mark as loaded so we don't retry on every render
-          useRoutesStore.setState({ loaded: true })
+        if (route) {
+          setActiveRoute(route)
+        } else {
+          // No active route — clear any stale terminal route from the store
+          useRoutesStore.setState({ activeRoute: null, loaded: true })
         }
       })
       .catch(() => {
-        // Non-critical — silently fail, WS will catch future assignments
         useRoutesStore.setState({ loaded: true })
       })
-  }, [isAuthenticated]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, activeRoute?.status]) // re-run when status changes
 }

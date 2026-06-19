@@ -16,6 +16,8 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { ServiceCard } from '../components/ServiceCard';
 import { RouteCard } from '@/features/routes/components/RouteCard';
 import { useServices, canTransition } from '../hooks/useServices';
+import { useActiveRouteSummary } from '@/features/dashboard/hooks/useActiveRouteSummary';
+import { useRoutesStore } from '@/features/routes/store/routesStore';
 import type { Service } from '../types/services.types';
 import type { ServicesStackParamList } from '../navigation/ServicesNavigator';
 
@@ -32,6 +34,8 @@ export function ServicesScreen() {
   const navigation = useNavigation<Nav>();
   const { colors } = useTheme();
   const { services, loading, refreshing, error, refresh, performAction, actionLoading } = useServices();
+  const activeRoute = useActiveRouteSummary();
+  const activeRouteInStore = useRoutesStore((s) => s.activeRoute);
   const [menuVisible, setMenuVisible] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0, width: 0 });
@@ -40,9 +44,17 @@ export function ServicesScreen() {
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} onRetry={refresh} />;
 
+  // IDs of services that belong to the active route — they're represented
+  // collectively by the RouteCard, so exclude them from the standalone list.
+  const routeServiceIds = new Set(
+    (activeRouteInStore?.stops ?? [])
+      .map((s) => s.service_id)
+      .filter(Boolean) as string[]
+  );
+
   const activeServices = showCompleted
     ? services.filter((s) => s.status === 'DELIVERED')
-    : services.filter((s) => s.status !== 'DELIVERED');
+    : services.filter((s) => s.status !== 'DELIVERED' && !routeServiceIds.has(s.id));
 
   async function handleAction(service: Service) {
     const result = await performAction(service);
@@ -82,7 +94,9 @@ export function ServicesScreen() {
             <Text style={[styles.title, { color: colors.neutral900 }]}>Pedidos del Día</Text>
             <View style={styles.headerRight}>
               <View style={[styles.countBadge, { backgroundColor: colors.primaryBg }]}>
-                <Text style={[styles.countText, { color: colors.primary }]}>{activeServices.length}</Text>
+                <Text style={[styles.countText, { color: colors.primary }]}>
+                  {activeServices.length + (activeRoute ? 1 : 0)}
+                </Text>
               </View>
               <TouchableOpacity
                 ref={menuBtnRef}
@@ -103,7 +117,15 @@ export function ServicesScreen() {
       <FlatList
         data={activeServices}
         keyExtractor={(item) => item.id}
-        ListHeaderComponent={null}
+        ListHeaderComponent={
+          !showCompleted && activeRoute ? (
+            <RouteCard
+              totalStops={activeRoute.totalStops}
+              onPress={() => navigation.navigate('RouteDetail' as any, { routeId: activeRoute.routeId })}
+              onRoutePress={() => navigation.navigate('RouteDetail' as any, { routeId: activeRoute.routeId })}
+            />
+          ) : null
+        }
         renderItem={({ item }) => {
           // Services that belong to a route get a dedicated card
           if (item.routeStop && item.status !== 'DELIVERED') {

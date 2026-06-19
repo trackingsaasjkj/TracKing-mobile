@@ -16,8 +16,10 @@ export function useActiveRouteSummary() {
   const activeRouteInStore = useRoutesStore((s) => s.activeRoute)
 
   return useMemo(() => {
-    // First try the routes store (populated after the user opens RouteDetailScreen)
-    if (activeRouteInStore) {
+    // First try the routes store (populated after the user opens RouteDetailScreen).
+    // Skip terminal statuses — a COMPLETED or CANCELLED route should never appear
+    // in the dashboard banner, even if the store hasn't been cleared yet.
+    if (activeRouteInStore && activeRouteInStore.status !== 'COMPLETED' && activeRouteInStore.status !== 'CANCELLED') {
       const stops = activeRouteInStore.stops ?? []
       const completed = stops.filter((s) => s.status === 'COMPLETED').length
       return {

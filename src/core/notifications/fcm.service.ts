@@ -1,9 +1,12 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import type { FirebaseMessagingTypes } from '@react-native-firebase/messaging';
 import type { Service } from '@/features/services/types/services.types';
 
-// True when running inside Expo Go (no native modules available)
-const IS_EXPO_GO = Constants.appOwnership === 'expo';
+// True when Firebase native modules are NOT available:
+// - Expo Go (appOwnership === 'expo')
+// - Web (react-native-firebase never works in a browser)
+const IS_EXPO_GO = Constants.appOwnership === 'expo' || Platform.OS === 'web';
 
 // ─── Lazy-load real Firebase only in native builds ────────────────────────────
 function getMessaging() {

@@ -6,6 +6,7 @@ import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
 import { StatusBadge } from '@/features/services/components/StatusBadge';
 import { ContactsMenu } from '@/features/services/components/ContactsMenu';
+import { getPaymentLabel } from '@/features/services/utils/paymentLabel';
 import { useServices } from '@/features/services/hooks/useServices';
 import type { Service } from '@/features/services/types/services.types';
 
@@ -108,7 +109,7 @@ export function ActiveServiceCard({ service, onPress, onNavigate, onViewDetails 
               {service.destination_name}
             </Text>
             <Text style={[styles.clientSub, { color: colors.neutral500 }]}>
-              {service.payment_method}
+              {getPaymentLabel(service)}
             </Text>
           </View>
         </View>

@@ -10,10 +10,16 @@
  *   2. POST /services/?EIO=4&transport=polling&sid=<sid>  → send auth
  *   3. GET /services/?EIO=4&transport=websocket&sid=<sid>  → upgrade to WS
  *   4. Exchange Socket.io packets over WS
+ *
+ * NOTE: WebSocket is disabled on web — the backend only accepts native
+ * connections. On web the app falls back to HTTP polling via REST.
  */
 
-const WS_BASE_URL = 'wss://tracking-backend-g4mq.onrender.com';
-const HTTP_BASE_URL = 'https://tracking-backend-g4mq.onrender.com';
+import { Platform } from 'react-native';
+import { WS_BASE_URL } from './config';
+
+const IS_WEB = Platform.OS === 'web';
+
 const NAMESPACE = '/services';
 
 /** Backoff delays in ms: 1s, 2s, 4s, 8s, 16s, 30s */
@@ -48,6 +54,7 @@ class ServiceWebSocketClient {
   private readonly statusListeners = new Set<StatusHandler>();
 
   connect(token: string): void {
+    if (IS_WEB) return;
     if (this.ws && this.ws.readyState === WebSocket.OPEN && this.currentToken === token) return;
     this.currentToken = token;
     this.isManualDisconnect = false;

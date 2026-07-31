@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Camera } from 'expo-camera';
 import { evidenceApi } from '../api/evidenceApi';
+import { compressEvidenceImage } from '../utils/compressImage';
 
 interface UploadState {
   imageUri: string | null;
@@ -51,7 +52,9 @@ export function useUploadEvidence(): UseUploadEvidenceReturn {
       }
       setState((s) => ({ ...s, uploading: true, error: null }));
       try {
-        await evidenceApi.upload(serviceId, state.imageUri);
+        // Comprimir imagen antes del upload (R-4.1 a R-4.6)
+        const compressedUri = await compressEvidenceImage(state.imageUri);
+        await evidenceApi.upload(serviceId, compressedUri);
         setState((s) => ({ ...s, uploading: false, uploaded: true }));
         return true;
       } catch (err: any) {

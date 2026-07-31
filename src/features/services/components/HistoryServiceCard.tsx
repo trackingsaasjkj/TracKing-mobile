@@ -5,18 +5,13 @@ import { fontSize, fontWeight } from '@/shared/ui/typography';
 import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { shadows } from '@/shared/ui/shadows';
 import { StatusBadge } from './StatusBadge';
+import { getPaymentLabel } from '../utils/paymentLabel';
 import type { Service } from '../types/services.types';
 
 interface HistoryServiceCardProps {
   service: Service;
   onPress: () => void;
 }
-
-const PAYMENT_LABEL: Record<string, string> = {
-  CASH: 'Efectivo',
-  TRANSFER: 'Transferencia',
-  CREDIT: 'Crédito',
-};
 
 function formatDate(dateStr?: string | null): string {
   if (!dateStr) return '—';
@@ -65,7 +60,7 @@ export function HistoryServiceCard({ service, onPress }: HistoryServiceCardProps
       <View style={[styles.footer, { borderTopColor: colors.neutral100 }]}>
         <View style={[styles.paymentBadge, { backgroundColor: colors.neutral100 }]}>
           <Text style={[styles.paymentText, { color: colors.neutral600 }]}>
-            {PAYMENT_LABEL[service.payment_method] ?? service.payment_method}
+            {getPaymentLabel(service)}
           </Text>
         </View>
         <Text style={[styles.price, { color: colors.neutral900 }]}>

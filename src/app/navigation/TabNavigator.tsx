@@ -1,7 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/ui/useTheme';
 import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
@@ -37,28 +35,6 @@ const WorkdayScreenWithSwipe = withSwipeNavigation(WorkdayScreen);
 
 export function TabNavigator() {
   const { colors } = useTheme();
-  const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
-  const lastTabRef = useRef<string>('Home');
-
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('state', (e) => {
-      // Get the current route
-      const state = e.data.state;
-      const currentRoute = state.routes[state.index]?.name;
-
-      // If we're leaving Orders tab, reset its stack
-      if (lastTabRef.current === 'Orders' && currentRoute !== 'Orders') {
-        // Navigate to Orders with ServicesList to reset the stack
-        navigation.navigate('Orders', {
-          screen: 'ServicesList',
-        } as any);
-      }
-
-      lastTabRef.current = currentRoute || 'Home';
-    });
-
-    return unsubscribe;
-  }, [navigation]);
 
   return (
     <Tab.Navigator
@@ -83,7 +59,19 @@ export function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home"     component={HomeScreenWithSwipe}        options={{ title: 'Inicio' }} />
-      <Tab.Screen name="Orders"   component={ServicesNavigatorWithSwipe} options={{ title: 'Servicios', headerShown: false }} />
+      <Tab.Screen
+        name="Orders"
+        component={ServicesNavigatorWithSwipe}
+        options={{ title: 'Servicios', headerShown: false }}
+        listeners={({ navigation }) => ({
+          // Every time the Orders tab is pressed (whether switching to it or
+          // tapping it again while already on it), reset the nested stack to
+          // ServicesList so the user never lands on a detail screen.
+          tabPress: () => {
+            navigation.navigate('Orders', { screen: 'ServicesList' } as any);
+          },
+        })}
+      />
       <Tab.Screen name="Earnings" component={EarningsScreenWithSwipe}    options={{ title: 'Reportes' }} />
       <Tab.Screen name="Config"   component={WorkdayScreenWithSwipe}     options={{ title: 'Config' }} />
     </Tab.Navigator>

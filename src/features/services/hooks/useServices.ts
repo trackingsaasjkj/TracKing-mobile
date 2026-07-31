@@ -4,6 +4,7 @@ import { servicesApi } from '../api/servicesApi';
 import { useServicesStore } from '../store/servicesStore';
 import { useAutoRefresh } from '@/core/hooks/useAutoRefresh';
 import { useServiceUpdates } from './useServiceUpdates';
+import { useLoadActiveRoute } from '@/features/routes/hooks/useLoadActiveRoute';
 import type { Service, ServiceStatus } from '../types/services.types';
 
 const NEXT_STATUS: Partial<Record<ServiceStatus, ServiceStatus>> = {
@@ -26,7 +27,7 @@ export function nextStatus(current: ServiceStatus): ServiceStatus | null {
  * Requirements: 5.4, 5.5
  */
 export function useServices() {
-  const { setServices, updateService } = useServicesStore();
+  const { services, updateService } = useServicesStore();
   const queryClient = useQueryClient();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -34,8 +35,20 @@ export function useServices() {
     queryKey: ['courier-services'],
     queryFn: async () => {
       const data = await servicesApi.getAll();
-      setServices(data);
-      return data;
+      // Merge with store instead of replacing — preserves WS patches (routeStop,
+      // status updates) that arrived between the invalidation and this refetch.
+      const { services: current, setServices: setSvcs } = useServicesStore.getState();
+      const merged = data.map((fresh) => {
+        const inStore = current.find((s) => s.id === fresh.id);
+        // Prefer server data for status fields, but keep routeStop from store
+        // if the server hasn't propagated it yet.
+        if (inStore?.routeStop && !fresh.routeStop) {
+          return { ...fresh, routeStop: inStore.routeStop };
+        }
+        return fresh;
+      });
+      setSvcs(merged);
+      return merged;
     },
     placeholderData: keepPreviousData,
   });
@@ -46,6 +59,9 @@ export function useServices() {
 
   // Layer 1: WebSocket + FCM real-time updates (< 50ms)
   useServiceUpdates();
+
+  // Layer 1b: Load active route on session start (handles pre-existing assignments)
+  useLoadActiveRoute();
 
   // Layer 2: Polling fallback every 15s (covers WS downtime, faster than 45s)
   useAutoRefresh(refresh, { foregroundInterval: 15_000 });
@@ -71,8 +87,11 @@ export function useServices() {
   );
 
   return {
-    services: query.data ?? [],
-    loading: query.isLoading,
+    // Read from the store, not query.data — the store gets real-time WS patches
+    // (routeStop, status updates) that query.data misses between refetches.
+    // query.data still drives loading/error state and keeps the store fresh.
+    services,
+    loading: query.isLoading && services.length === 0,
     refreshing: query.isFetching && !query.isLoading,
     error: query.isError ? (query.error as any)?.userMessage ?? 'Error al cargar servicios' : null,
     actionLoading,

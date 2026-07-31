@@ -4,9 +4,13 @@ import type { CourierUser, OperationalStatus } from '@/features/auth/types/auth.
 
 jest.mock('@/core/storage/secureStorage', () => ({
   secureStorage: {
-    setToken: jest.fn(),
-    clearToken: jest.fn(),
-    getToken: jest.fn().mockResolvedValue(null),
+    setAccessToken: jest.fn(),
+    getAccessToken: jest.fn().mockResolvedValue(null),
+    clearAccessToken: jest.fn(),
+    setRefreshToken: jest.fn(),
+    getRefreshToken: jest.fn().mockResolvedValue(null),
+    clearRefreshToken: jest.fn(),
+    clearAllTokens: jest.fn().mockResolvedValue(undefined),
   },
 }));
 
@@ -117,8 +121,8 @@ describe('authStore — setOperationalStatus', () => {
 
 describe('P-1: round-trip setSession → clearSession (PBT)', () => {
   it('P-1: siempre termina en isAuthenticated=false tras clearSession', async () => {
-    fc.assert(
-      fc.property(
+    await fc.assert(
+      fc.asyncProperty(
         fc.string({ minLength: 1, maxLength: 50 }),
         fc.string({ minLength: 10, maxLength: 100 }),
         async (name, token) => {
@@ -138,8 +142,8 @@ describe('P-1: round-trip setSession → clearSession (PBT)', () => {
 
 describe('P-2: setOperationalStatus nunca corrompe otros campos (PBT)', () => {
   it('P-2: cualquier status válido preserva id, email y company_id', async () => {
-    fc.assert(
-      fc.property(
+    await fc.assert(
+      fc.asyncProperty(
         fc.constantFrom('AVAILABLE', 'UNAVAILABLE', 'IN_SERVICE') as fc.Arbitrary<OperationalStatus>,
         async (status) => {
           const user = makeUser({ id: 'fixed-id', email: 'fixed@test.com', company_id: 'fixed-co' });

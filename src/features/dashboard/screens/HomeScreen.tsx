@@ -13,8 +13,11 @@ import { ErrorState } from '@/shared/components/ErrorState';
 import { Header } from '../components/Header';
 import { KPIBox } from '../components/KPIBox';
 import { ActiveServiceCard } from '../components/ActiveServiceCard';
+import { RouteCard } from '@/features/routes/components/RouteCard';
 import { DailyProgress } from '../components/DailyProgress';
 import { useDashboard } from '../hooks/useDashboard';
+import { useActiveRouteSummary } from '../hooks/useActiveRouteSummary';
+import { useRoutesStore } from '@/features/routes/store/routesStore';
 import { useLocation } from '@/features/tracking/hooks/useLocation';
 import type { MainTabParamList } from '@/app/navigation/TabNavigator';
 
@@ -25,6 +28,8 @@ export function HomeScreen() {
   const navigation = useNavigation<HomeNav>();
   const { colors } = useTheme();
   const { kpis, activeServices, loading, refreshing, error, refresh } = useDashboard();
+  const activeRoute = useActiveRouteSummary();
+  const activeRouteInStore = useRoutesStore((s) => s.activeRoute);
 
   // HomeScreen is always mounted — it owns the foreground tracking lifecycle.
   // Starts the 15s GPS interval + background task when courier is IN_SERVICE.
@@ -32,10 +37,28 @@ export function HomeScreen() {
   const operationalStatus = useAuthStore((s) => s.user?.operationalStatus);
   useLocation({ active: operationalStatus === 'IN_SERVICE' });
 
+  const handleRoutePress = () => {
+    if (!activeRoute) return;
+    navigation.navigate('Orders', {
+      screen: 'RouteDetail',
+      params: { routeId: activeRoute.routeId },
+    } as any);
+  };
+
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} onRetry={refresh} />;
 
   const totalOrders = kpis.pending + kpis.inTransit + kpis.completed;
+
+  // Deduplicate: remove services that belong to the active route
+  // (the route card already represents them collectively)
+  const routeServiceIds = new Set(
+    (activeRouteInStore?.stops ?? [])
+      .map((s) => s.service_id)
+      .filter(Boolean) as string[]
+  );
+  const standaloneServices = activeServices.filter((s) => !routeServiceIds.has(s.id));
+  const hasContent = activeRoute || standaloneServices.length > 0;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]}>
@@ -54,12 +77,36 @@ export function HomeScreen() {
 
         <DailyProgress completed={kpis.completed} total={totalOrders} />
 
-        {activeServices.length > 0 ? (
+        {hasContent ? (
           <View style={styles.activeSection}>
             <Text style={[styles.sectionTitle, { color: colors.neutral500 }]}>
-              Servicios activos ({activeServices.length})
+              Servicios activos ({standaloneServices.length + (activeRoute ? 1 : 0)})
             </Text>
-            {activeServices.map((svc) => (
+
+            {/* Route card — shown as the first item when there's an active route */}
+            {activeRoute && (
+              <View style={styles.cardWrapper}>
+                <RouteCard
+                  service={activeServices.find((s) => s.routeStop?.route.id === activeRoute.routeId)}
+                  totalStops={activeRoute.totalStops}
+                  onPress={() =>
+                    navigation.navigate('Orders', {
+                      screen: 'RouteDetail',
+                      params: { routeId: activeRoute.routeId },
+                    } as any)
+                  }
+                  onRoutePress={() =>
+                    navigation.navigate('Orders', {
+                      screen: 'RouteDetail',
+                      params: { routeId: activeRoute.routeId },
+                    } as any)
+                  }
+                />
+              </View>
+            )}
+
+            {/* Standalone service cards */}
+            {standaloneServices.map((svc) => (
               <ActiveServiceCard
                 key={svc.id}
                 service={svc}
@@ -99,6 +146,7 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   activeSection: { marginTop: spacing.md, gap: spacing.sm },
+  cardWrapper: { paddingHorizontal: spacing.lg },
   sectionTitle: {
     fontSize: fontSize.xs,
     fontWeight: fontWeight.semibold,

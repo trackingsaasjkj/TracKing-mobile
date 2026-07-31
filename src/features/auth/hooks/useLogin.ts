@@ -32,21 +32,38 @@ export function useLogin(): UseLoginResult {
   }
 
   async function login(email: string, password: string) {
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('[Login] INICIANDO SESIÓN');
+    console.log('[Login] Email:', email);
+    console.log('[Login] Password length:', password.length);
+    console.log('═══════════════════════════════════════════════════════════');
+    
     setError(null);
     setIsLoading(true);
     try {
+      console.log('[Login] Llamando authApi.login()...');
+      
       // Backend returns: { id, name, email, role, company_id, accessToken, refreshToken }
       const userData = await authApi.login({ email, password });
       
+      console.log('[Login] ✅ RESPUESTA RECIBIDA del backend:');
+      console.log('[Login] userData:', JSON.stringify(userData, null, 2));
       console.log('[Login] Response received:', {
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        company_id: userData.company_id,
         hasAccessToken: !!userData.accessToken,
         hasRefreshToken: !!userData.refreshToken,
         accessTokenLength: userData.accessToken?.length ?? 0,
-        refreshTokenLength: userData.refreshToken?.length ?? 0
+        refreshTokenLength: userData.refreshToken?.length ?? 0,
+        accessTokenStart: userData.accessToken?.substring(0, 30) ?? 'null',
       });
 
       // Only allow COURIER role to use the mobile app
       if (userData.role !== 'COURIER') {
+        console.log('[Login] ❌ ERRO: Usuario NO es COURIER, es:', userData.role);
         setError('Esta app es exclusiva para mensajeros.');
         return;
       }
@@ -61,22 +78,51 @@ export function useLogin(): UseLoginResult {
       };
 
       // Save both accessToken and refreshToken
-      console.log('[Login] Saving tokens to store');
+      console.log('[Login] Guardando tokens en el store...');
       console.log('[Login] accessToken:', userData.accessToken?.substring(0, 20) + '...');
       console.log('[Login] refreshToken:', userData.refreshToken?.substring(0, 20) + '...');
       await setSession(user, userData.accessToken, userData.refreshToken);
+      console.log('[Login] ✅ Tokens guardados correctamente');
 
       // Fetch real operational status — login response doesn't include it
       try {
+        console.log('[Login] Buscando profile...');
         const profile = await dashboardApi.getProfile();
+        console.log('[Login] ✅ Profile obtenido:', profile);
         user.operationalStatus = profile.operational_status;
         await setSession(user, userData.accessToken, userData.refreshToken);
-      } catch {
+      } catch (profileErr) {
+        console.warn('[Login] ⚠️  No se pudo obtener profile:', profileErr);
         // Non-critical: useDashboard will sync it on mount
       }
+      
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('[Login] ✅✅✅ LOGIN EXITOSO ✅✅✅');
+      console.log('═══════════════════════════════════════════════════════════');
     } catch (err: unknown) {
-      const apiErr = err as { response?: { status?: number }; userMessage?: string };
+      console.error('═══════════════════════════════════════════════════════════');
+      console.error('[Login] ❌ ERROR EN LOGIN');
+      console.error('[Login] Error completo:', err);
+      console.error('[Login] Error JSON:', JSON.stringify(err, null, 2));
+      
+      const apiErr = err as { 
+        response?: { status?: number; data?: any }; 
+        userMessage?: string;
+        message?: string;
+        code?: string;
+      };
+      
       const status = apiErr?.response?.status;
+      
+      console.error('[Login] Error details:', {
+        status,
+        statusText: (err as any)?.response?.statusText,
+        responseData: apiErr?.response?.data,
+        userMessage: apiErr?.userMessage,
+        message: apiErr?.message,
+        code: apiErr?.code,
+      });
+      console.error('═══════════════════════════════════════════════════════════');
 
       if (status === 429) {
         setError('Demasiados intentos. Por favor espera.');
@@ -84,7 +130,9 @@ export function useLogin(): UseLoginResult {
       } else if (status === 401) {
         setError('Email o contraseña incorrectos.');
       } else {
-        setError(apiErr?.userMessage ?? 'Error al iniciar sesión. Intenta de nuevo.');
+        const errorMsg = apiErr?.userMessage ?? apiErr?.message ?? 'Error al iniciar sesión. Intenta de nuevo.';
+        console.error('[Login] Mostrando error:', errorMsg);
+        setError(errorMsg);
       }
     } finally {
       setIsLoading(false);

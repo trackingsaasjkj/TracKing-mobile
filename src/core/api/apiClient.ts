@@ -1,16 +1,8 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { handleApiError } from '@/shared/utils/errorHandler';
+import { API_BASE_URL } from './config';
 
-/**
- * Backend API URL configuration.
- * 
- * URL hardcodeada para todas las plataformas.
- * Cambiar aquí si necesitas usar un backend diferente.
- * 
- * Desarrollo: http://192.168.1.2:3000 (reemplaza con tu IP local)
- * Producción: https://tracking-backend-g4mq.onrender.com
- */
-const BASE_URL = 'http://192.168.1.2:3000';
+const BASE_URL = API_BASE_URL;
 
 /** Wrapper estandar de todas las respuestas del backend */
 export interface ApiResponse<T> {
@@ -45,6 +37,8 @@ function getAuthStore() {
 // NOTA: Los interceptores de request deben ser síncronos, así que usamos tokens del store en memoria
 // Los tokens se guardan en secure store para persistencia, pero se usan desde memoria en requests
 apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  console.log('[Request] Interceptor - URL:', config.url, 'Method:', config.method);
+  
   // NO adjuntar token en el endpoint de refresh
   // El refresh endpoint espera el refresh_token en el body
   if (config.url?.includes('/api/auth/refresh')) {
@@ -57,7 +51,9 @@ apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('[Request] Bearer token attached');
+    console.log('[Request] ✅ Bearer token attached');
+  } else {
+    console.log('[Request] ⚠️  NO token available:', { hasToken: !!token });
   }
   return config;
 });
@@ -75,10 +71,15 @@ function processQueue(error: unknown, token: string | null) {
 }
 
 apiClient.interceptors.response.use(
-  (response) => {
+  (response: AxiosResponse) => {
     // NO transformar la respuesta aquí
     // Dejar que la respuesta sea exactamente como viene del backend
     // El cliente (authApi, etc) usará unwrap() si necesita extraer data
+    console.log('[Response] ✅ Respuesta exitosa:', {
+      url: response.config.url,
+      status: response.status,
+      hasData: !!response.data
+    });
     return response;
   },
   async (error: AxiosError) => {
@@ -86,12 +87,25 @@ apiClient.interceptors.response.use(
     const status = error.response?.status;
 
     // Log para debugging
-    console.log('[Response] Error interceptor triggered:', {
-      url: originalRequest.url,
-      status,
-      statusText: error.response?.statusText,
-      message: error.message
-    });
+    console.log('═══════════════════════════════════════════════════════════');
+    console.log('[Response] ❌ Error interceptor triggered');
+    console.log('[Response] URL:', originalRequest.url);
+    console.log('[Response] Status:', status);
+    console.log('[Response] Status text:', error.response?.statusText);
+    console.log('[Response] Message:', error.message);
+    console.log('[Response] Response data:', error.response?.data);
+    console.log('[Response] Error code:', error.code);
+    console.log('═══════════════════════════════════════════════════════════');
+
+    if (originalRequest.url?.includes('/api/auth/login')) {
+      console.log('═══════════════════════════════════════════════════════════');
+      console.log('[Response] ❌❌❌ LOGIN ENDPOINT ERROR ❌❌❌');
+      console.log('[Response] Status:', status);
+      console.log('[Response] Status text:', error.response?.statusText);
+      console.log('[Response] Response data:', error.response?.data);
+      console.log('[Response] Full error:', JSON.stringify(error, null, 2));
+      console.log('═══════════════════════════════════════════════════════════');
+    }
 
     if (originalRequest.url?.includes('/api/auth/refresh')) {
       console.log('[Response] Refresh endpoint error:', {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
-import * as Camera from 'expo-camera';
+import { Camera } from 'expo-camera';
 
 /**
  * Requests all permissions the app needs at startup.

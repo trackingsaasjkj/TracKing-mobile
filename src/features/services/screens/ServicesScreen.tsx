@@ -3,7 +3,6 @@ import {
   View, Text, FlatList, StyleSheet, RefreshControl, TouchableOpacity, Alert,
   Modal, Pressable,
 } from 'react-native';
-import type { View as RNView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -39,7 +38,7 @@ export function ServicesScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState({ x: 0, y: 0, width: 0 });
-  const menuBtnRef = useRef<RNView>(null);
+  const menuBtnRef = useRef<React.ComponentRef<typeof View>>(null);
 
   if (loading) return <LoadingSpinner />;
   if (error) return <ErrorState message={error} onRetry={refresh} />;
@@ -124,7 +123,7 @@ export function ServicesScreen() {
               onPress={() => navigation.navigate('RouteDetail' as any, { routeId: activeRoute.routeId })}
               onRoutePress={() => navigation.navigate('RouteDetail' as any, { routeId: activeRoute.routeId })}
             />
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => {
           // Services that belong to a route get a dedicated card

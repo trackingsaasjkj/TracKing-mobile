@@ -1,7 +1,7 @@
 import { renderHook } from '@testing-library/react-native';
 import { act } from '@testing-library/react-native';
 import * as Location from 'expo-location';
-import * as Camera from 'expo-camera';
+import { Camera } from 'expo-camera';
 import { usePermissions } from '@/core/hooks/usePermissions';
 
 jest.mock('expo-location', () => ({
@@ -11,7 +11,7 @@ jest.mock('expo-location', () => ({
 }));
 
 jest.mock('expo-camera', () => ({
-  requestCameraPermissionsAsync: jest.fn(),
+  Camera: { requestCameraPermissionsAsync: jest.fn() },
 }));
 
 beforeEach(() => {
@@ -25,25 +25,25 @@ beforeEach(() => {
 
 describe('usePermissions — solicitud automática', () => {
   it('pide permiso de ubicación en primer plano al montar', async () => {
-    renderHook(() => usePermissions());
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
     expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
   });
 
   it('pide permiso de ubicación en segundo plano al montar', async () => {
-    renderHook(() => usePermissions());
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
     expect(Location.requestBackgroundPermissionsAsync).toHaveBeenCalledTimes(1);
   });
 
   it('pide permiso de cámara al montar', async () => {
-    renderHook(() => usePermissions());
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
     expect(Camera.requestCameraPermissionsAsync).toHaveBeenCalledTimes(1);
   });
 
   it('pide los tres permisos sin importar si hay sesión activa', async () => {
-    renderHook(() => usePermissions());
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
     expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalled();
     expect(Location.requestBackgroundPermissionsAsync).toHaveBeenCalled();
@@ -69,7 +69,7 @@ describe('usePermissions — orden de solicitud', () => {
       return { status: 'granted' };
     });
 
-    renderHook(() => usePermissions());
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); await Promise.resolve(); await Promise.resolve(); });
 
     expect(callOrder[0]).toBe('foreground');
@@ -82,9 +82,9 @@ describe('usePermissions — orden de solicitud', () => {
 
 describe('usePermissions — guard contra doble solicitud', () => {
   it('no pide permisos dos veces si el hook se re-renderiza', async () => {
-    const { rerender } = renderHook(() => usePermissions());
+    const { rerender } = await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
-    rerender({});
+    await rerender({});
     await act(async () => { await Promise.resolve(); });
     expect(Location.requestForegroundPermissionsAsync).toHaveBeenCalledTimes(1);
   });
@@ -97,20 +97,20 @@ describe('usePermissions — resistencia a errores', () => {
     (Location.requestForegroundPermissionsAsync as jest.Mock).mockRejectedValue(
       new Error('Permissions API unavailable'),
     );
-    expect(() => renderHook(() => usePermissions())).not.toThrow();
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
   });
 
   it('no lanza si el permiso de cámara es denegado', async () => {
     (Camera.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
-    expect(() => renderHook(() => usePermissions())).not.toThrow();
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
   });
 
   it('no lanza si el permiso de ubicación es denegado', async () => {
     (Location.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
     (Location.requestBackgroundPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
-    expect(() => renderHook(() => usePermissions())).not.toThrow();
+    await renderHook(() => usePermissions());
     await act(async () => { await Promise.resolve(); });
   });
 });

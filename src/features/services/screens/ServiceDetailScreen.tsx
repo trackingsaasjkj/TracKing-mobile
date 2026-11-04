@@ -169,7 +169,7 @@ export function ServiceDetailScreen() {
         {service.routeStop && (
           <TouchableOpacity
             style={[styles.routeLinkSection, { backgroundColor: colors.primaryBg, borderColor: colors.primaryLight }]}
-            onPress={() => navigation.navigate('RouteDetail' as any, { routeId: service.routeStop.route.id })}
+            onPress={() => navigation.navigate('RouteDetail' as any, { routeId: service.routeStop!.route.id })}
             activeOpacity={0.8}
           >
             <Ionicons name="git-branch-outline" size={18} color={colors.primary} />
@@ -183,7 +183,7 @@ export function ServiceDetailScreen() {
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.neutral500 }]}>Paquete</Text>
           <Row label="Detalle" value={service.package_details} colors={colors} />
-          <Row label="Método de pago" value={PAYMENT_METHOD_LABEL[service.payment_method] ?? service.payment_method} colors={colors} />
+          <Row label="Método de pago" value={service.paymentMethod?.name ?? PAYMENT_METHOD_LABEL[service.payment_method ?? ''] ?? service.payment_method ?? ''} colors={colors} />
           <Row
             label="Estado de pago"
             value={PAYMENT_STATUS_LABEL[service.payment_status] ?? service.payment_status}

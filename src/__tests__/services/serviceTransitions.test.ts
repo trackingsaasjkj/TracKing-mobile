@@ -5,19 +5,19 @@ import type { ServiceStatus } from '@/features/services/types/services.types';
 // ─── canTransition ────────────────────────────────────────────────────────────
 
 describe('canTransition', () => {
-  it('ASSIGNED → puede transicionar', () => {
+  it('ASSIGNED → puede transicionar', async () => {
     expect(canTransition('ASSIGNED')).toBe(true);
   });
 
-  it('ACCEPTED → puede transicionar', () => {
+  it('ACCEPTED → puede transicionar', async () => {
     expect(canTransition('ACCEPTED')).toBe(true);
   });
 
-  it('IN_TRANSIT → puede transicionar', () => {
+  it('IN_TRANSIT → puede transicionar', async () => {
     expect(canTransition('IN_TRANSIT')).toBe(true);
   });
 
-  it('DELIVERED → estado terminal, no puede transicionar', () => {
+  it('DELIVERED → estado terminal, no puede transicionar', async () => {
     expect(canTransition('DELIVERED')).toBe(false);
   });
 });
@@ -25,23 +25,23 @@ describe('canTransition', () => {
 // ─── nextStatus ───────────────────────────────────────────────────────────────
 
 describe('nextStatus', () => {
-  it('ASSIGNED → ACCEPTED', () => {
+  it('ASSIGNED → ACCEPTED', async () => {
     expect(nextStatus('ASSIGNED')).toBe('ACCEPTED');
   });
 
-  it('ACCEPTED → IN_TRANSIT', () => {
+  it('ACCEPTED → IN_TRANSIT', async () => {
     expect(nextStatus('ACCEPTED')).toBe('IN_TRANSIT');
   });
 
-  it('IN_TRANSIT → DELIVERED', () => {
+  it('IN_TRANSIT → DELIVERED', async () => {
     expect(nextStatus('IN_TRANSIT')).toBe('DELIVERED');
   });
 
-  it('DELIVERED → null (sin siguiente estado)', () => {
+  it('DELIVERED → null (sin siguiente estado)', async () => {
     expect(nextStatus('DELIVERED')).toBeNull();
   });
 
-  it('ASSIGNED no salta estados intermedios', () => {
+  it('ASSIGNED no salta estados intermedios', async () => {
     expect(nextStatus('ASSIGNED')).not.toBe('IN_TRANSIT');
     expect(nextStatus('ASSIGNED')).not.toBe('DELIVERED');
   });
@@ -50,7 +50,7 @@ describe('nextStatus', () => {
 // ─── Cadena completa ──────────────────────────────────────────────────────────
 
 describe('cadena de transiciones completa', () => {
-  it('sigue la secuencia correcta de inicio a fin', () => {
+  it('sigue la secuencia correcta de inicio a fin', async () => {
     const chain: ServiceStatus[] = [];
     let current: ServiceStatus = 'ASSIGNED';
 
@@ -63,7 +63,7 @@ describe('cadena de transiciones completa', () => {
     expect(chain).toEqual(['ACCEPTED', 'IN_TRANSIT', 'DELIVERED']);
   });
 
-  it('la cadena termina exactamente en DELIVERED', () => {
+  it('la cadena termina exactamente en DELIVERED', async () => {
     let current: ServiceStatus = 'ASSIGNED';
     while (canTransition(current)) {
       current = nextStatus(current)!;
@@ -75,7 +75,7 @@ describe('cadena de transiciones completa', () => {
 // ─── PBT: estados no terminales siempre tienen siguiente ─────────────────────
 
 describe('P-1: estados no terminales siempre tienen nextStatus (PBT)', () => {
-  it('P-1: ASSIGNED, ACCEPTED, IN_TRANSIT → nextStatus nunca es null', () => {
+  it('P-1: ASSIGNED, ACCEPTED, IN_TRANSIT → nextStatus nunca es null', async () => {
     fc.assert(
       fc.property(
         fc.constantFrom<ServiceStatus>('ASSIGNED', 'ACCEPTED', 'IN_TRANSIT'),
@@ -92,7 +92,7 @@ describe('P-1: estados no terminales siempre tienen nextStatus (PBT)', () => {
 // ─── PBT: DELIVERED siempre es terminal ──────────────────────────────────────
 
 describe('P-2: DELIVERED siempre es estado terminal (PBT)', () => {
-  it('P-2: canTransition(DELIVERED) siempre es false', () => {
+  it('P-2: canTransition(DELIVERED) siempre es false', async () => {
     fc.assert(
       fc.property(
         fc.constant<ServiceStatus>('DELIVERED'),
@@ -109,7 +109,7 @@ describe('P-2: DELIVERED siempre es estado terminal (PBT)', () => {
 // ─── PBT: nextStatus es determinista ─────────────────────────────────────────
 
 describe('P-3: nextStatus es determinista (PBT)', () => {
-  it('P-3: el mismo estado siempre produce el mismo siguiente estado', () => {
+  it('P-3: el mismo estado siempre produce el mismo siguiente estado', async () => {
     fc.assert(
       fc.property(
         fc.constantFrom<ServiceStatus>('ASSIGNED', 'ACCEPTED', 'IN_TRANSIT', 'DELIVERED'),

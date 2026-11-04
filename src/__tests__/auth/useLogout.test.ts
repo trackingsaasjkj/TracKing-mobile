@@ -57,7 +57,7 @@ describe('useLogout — flujo normal', () => {
   });
 
   it('llama DELETE /notifications/fcm-token antes de hacer logout', async () => {
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     expect(mockApiDelete).toHaveBeenCalledWith('/notifications/fcm-token');
@@ -68,14 +68,14 @@ describe('useLogout — flujo normal', () => {
     mockApiDelete.mockImplementation(async () => { callOrder.push('delete-fcm'); return {} as any; });
     mockAuthApiLogout.mockImplementation(async () => { callOrder.push('logout'); });
 
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     expect(callOrder).toEqual(['delete-fcm', 'logout']);
   });
 
   it('limpia la sesión local después del logout', async () => {
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     const state = useAuthStore.getState();
@@ -90,7 +90,7 @@ describe('useLogout — flujo normal', () => {
       loadingDuringLogout = true;
     });
 
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     const logoutPromise = act(async () => { await result.current.logout(); });
 
     await logoutPromise;
@@ -107,7 +107,7 @@ describe('useLogout — DELETE fcm-token falla', () => {
   });
 
   it('continúa con el logout aunque DELETE fcm-token falle', async () => {
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     // El logout del backend igual se llama
@@ -115,7 +115,7 @@ describe('useLogout — DELETE fcm-token falla', () => {
   });
 
   it('limpia la sesión aunque DELETE fcm-token falle', async () => {
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
@@ -131,7 +131,7 @@ describe('useLogout — authApi.logout falla', () => {
   });
 
   it('limpia la sesión local aunque el backend falle', async () => {
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
@@ -139,7 +139,7 @@ describe('useLogout — authApi.logout falla', () => {
   });
 
   it('isLoading vuelve a false aunque el backend falle', async () => {
-    const { result } = renderHook(() => useLogout());
+    const { result } = await renderHook(() => useLogout());
     await act(async () => { await result.current.logout(); });
 
     expect(result.current.isLoading).toBe(false);

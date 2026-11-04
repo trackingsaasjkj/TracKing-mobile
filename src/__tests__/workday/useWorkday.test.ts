@@ -42,14 +42,14 @@ describe('useWorkday — startWorkday', () => {
 
   it('llama a workdayApi.start', async () => {
     (workdayApi.start as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     await act(async () => { await result.current.startWorkday(); });
     expect(workdayApi.start).toHaveBeenCalledTimes(1);
   });
 
   it('retorna ok:true y actualiza status a AVAILABLE', async () => {
     (workdayApi.start as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.startWorkday(); });
     expect(res.ok).toBe(true);
@@ -58,7 +58,7 @@ describe('useWorkday — startWorkday', () => {
 
   it('retorna ok:false con error cuando la API falla', async () => {
     (workdayApi.start as jest.Mock).mockRejectedValue({ userMessage: 'Error de red' });
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.startWorkday(); });
     expect(res.ok).toBe(false);
@@ -67,7 +67,7 @@ describe('useWorkday — startWorkday', () => {
 
   it('no modifica el status cuando la API falla', async () => {
     (workdayApi.start as jest.Mock).mockRejectedValue({ userMessage: 'Fallo' });
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     await act(async () => { await result.current.startWorkday(); });
     expect(useAuthStore.getState().user?.operationalStatus).toBe('UNAVAILABLE');
   });
@@ -85,7 +85,7 @@ describe('useWorkday — endWorkday', () => {
   it('retorna ok:true y actualiza status a UNAVAILABLE cuando no hay servicios activos', async () => {
     useServicesStore.setState({ services: [makeService('DELIVERED')], loaded: true });
     (workdayApi.end as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.endWorkday(); });
     expect(res.ok).toBe(true);
@@ -94,7 +94,7 @@ describe('useWorkday — endWorkday', () => {
 
   it('retorna ok:false sin llamar API cuando hay servicios ASSIGNED', async () => {
     useServicesStore.setState({ services: [makeService('ASSIGNED')], loaded: true });
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.endWorkday(); });
     expect(res.ok).toBe(false);
@@ -104,7 +104,7 @@ describe('useWorkday — endWorkday', () => {
 
   it('retorna ok:false sin llamar API cuando hay servicios IN_TRANSIT', async () => {
     useServicesStore.setState({ services: [makeService('IN_TRANSIT')], loaded: true });
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.endWorkday(); });
     expect(res.ok).toBe(false);
@@ -113,7 +113,7 @@ describe('useWorkday — endWorkday', () => {
 
   it('retorna ok:false sin llamar API cuando hay servicios ACCEPTED', async () => {
     useServicesStore.setState({ services: [makeService('ACCEPTED')], loaded: true });
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.endWorkday(); });
     expect(res.ok).toBe(false);
@@ -123,7 +123,7 @@ describe('useWorkday — endWorkday', () => {
   it('retorna ok:false con error cuando la API falla', async () => {
     useServicesStore.setState({ services: [], loaded: true });
     (workdayApi.end as jest.Mock).mockRejectedValue({ userMessage: 'Fallo del servidor' });
-    const { result } = renderHook(() => useWorkday());
+    const { result } = await renderHook(() => useWorkday());
     let res: any;
     await act(async () => { res = await result.current.endWorkday(); });
     expect(res.ok).toBe(false);
@@ -142,7 +142,7 @@ describe('P-1: estados activos siempre bloquean endWorkday (PBT)', () => {
           useServicesStore.setState({ services: [makeService(status)], loaded: true });
           jest.clearAllMocks();
 
-          const { result } = renderHook(() => useWorkday());
+          const { result } = await renderHook(() => useWorkday());
           let res: any;
           await act(async () => { res = await result.current.endWorkday(); });
 
@@ -171,7 +171,7 @@ describe('P-2: startWorkday exitoso siempre produce AVAILABLE (PBT)', () => {
           useServicesStore.setState({ services: [], loaded: false });
           (workdayApi.start as jest.Mock).mockResolvedValue(undefined);
 
-          const { result } = renderHook(() => useWorkday());
+          const { result } = await renderHook(() => useWorkday());
           await act(async () => { await result.current.startWorkday(); });
 
           expect(useAuthStore.getState().user?.operationalStatus).toBe('AVAILABLE');

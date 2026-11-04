@@ -69,23 +69,23 @@ beforeEach(() => {
 // ─── Registro de listeners ────────────────────────────────────────────────────
 
 describe('useRouteUpdates — registro de listeners', () => {
-  it('registra los 3 eventos de ruta al montar', () => {
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+  it('registra los 3 eventos de ruta al montar', async () => {
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
 
     expect(wsClient.on).toHaveBeenCalledWith('route:assigned', expect.any(Function));
     expect(wsClient.on).toHaveBeenCalledWith('route:updated', expect.any(Function));
     expect(wsClient.on).toHaveBeenCalledWith('route:stop:completed', expect.any(Function));
   });
 
-  it('no registra listeners sin accessToken', () => {
+  it('no registra listeners sin accessToken', async () => {
     useAuthStore.setState({ accessToken: null, isAuthenticated: false, user: null });
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
     expect(wsClient.on).not.toHaveBeenCalled();
   });
 
-  it('cancela los listeners al desmontar', () => {
-    const { unmount } = renderHook(() => useRouteUpdates('route-1'), { wrapper });
-    unmount();
+  it('cancela los listeners al desmontar', async () => {
+    const { unmount } = await renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await unmount();
 
     // Emit after unmount — store should not change
     useRoutesStore.getState().setActiveRoute(makeRoute());
@@ -99,8 +99,8 @@ describe('useRouteUpdates — registro de listeners', () => {
 // ─── route:assigned ───────────────────────────────────────────────────────────
 
 describe('useRouteUpdates — route:assigned', () => {
-  it('guarda la ruta en el store cuando se recibe route:assigned', () => {
-    renderHook(() => useRouteUpdates(), { wrapper });
+  it('guarda la ruta en el store cuando se recibe route:assigned', async () => {
+    await renderHook(() => useRouteUpdates(), { wrapper });
     const route = makeRoute({ id: 'route-new' });
 
     act(() => { emitWs('route:assigned', route); });
@@ -109,8 +109,8 @@ describe('useRouteUpdates — route:assigned', () => {
     expect(useRoutesStore.getState().loaded).toBe(true);
   });
 
-  it('incluye las paradas de la ruta asignada', () => {
-    renderHook(() => useRouteUpdates(), { wrapper });
+  it('incluye las paradas de la ruta asignada', async () => {
+    await renderHook(() => useRouteUpdates(), { wrapper });
     const route = makeRoute({ stops: [makeStop('s1'), makeStop('s2'), makeStop('s3')] });
 
     act(() => { emitWs('route:assigned', route); });
@@ -122,27 +122,27 @@ describe('useRouteUpdates — route:assigned', () => {
 // ─── route:updated ────────────────────────────────────────────────────────────
 
 describe('useRouteUpdates — route:updated', () => {
-  it('actualiza el status de la ruta activa a COMPLETED', () => {
+  it('actualiza el status de la ruta activa a COMPLETED', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'route-1' }));
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
 
     act(() => { emitWs('route:updated', { id: 'route-1', status: 'COMPLETED' }); });
 
     expect(useRoutesStore.getState().activeRoute?.status).toBe('COMPLETED');
   });
 
-  it('actualiza el status de la ruta activa a CANCELLED', () => {
+  it('actualiza el status de la ruta activa a CANCELLED', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'route-1' }));
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
 
     act(() => { emitWs('route:updated', { id: 'route-1', status: 'CANCELLED' }); });
 
     expect(useRoutesStore.getState().activeRoute?.status).toBe('CANCELLED');
   });
 
-  it('no modifica el store si el id no coincide', () => {
+  it('no modifica el store si el id no coincide', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'route-1' }));
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
 
     act(() => { emitWs('route:updated', { id: 'route-OTHER', status: 'CANCELLED' }); });
 
@@ -153,9 +153,9 @@ describe('useRouteUpdates — route:updated', () => {
 // ─── route:stop:completed ─────────────────────────────────────────────────────
 
 describe('useRouteUpdates — route:stop:completed', () => {
-  it('marca la parada como COMPLETED en el store', () => {
+  it('marca la parada como COMPLETED en el store', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'route-1' }));
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
 
     act(() => {
       emitWs('route:stop:completed', {
@@ -169,9 +169,9 @@ describe('useRouteUpdates — route:stop:completed', () => {
     expect(stop?.status).toBe('COMPLETED');
   });
 
-  it('no modifica otras paradas al completar una', () => {
+  it('no modifica otras paradas al completar una', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'route-1' }));
-    renderHook(() => useRouteUpdates('route-1'), { wrapper });
+    await renderHook(() => useRouteUpdates('route-1'), { wrapper });
 
     act(() => {
       emitWs('route:stop:completed', {

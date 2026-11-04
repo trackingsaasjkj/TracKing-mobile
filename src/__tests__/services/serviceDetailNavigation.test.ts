@@ -89,7 +89,7 @@ describe('ServiceDetailScreen — navegación al salir', () => {
     mockGoBack.mockClear();
   });
 
-  it('navega a ServicesList al presionar el botón de back', () => {
+  it('navega a ServicesList al presionar el botón de back', async () => {
     // Simula la lógica del botón de back del ServiceDetailScreen
     const handleBack = () => mockNavigate('ServicesList');
     handleBack();
@@ -98,14 +98,14 @@ describe('ServiceDetailScreen — navegación al salir', () => {
     expect(mockNavigate).toHaveBeenCalledTimes(1);
   });
 
-  it('NO usa goBack() — siempre navega explícitamente a ServicesList', () => {
+  it('NO usa goBack() — siempre navega explícitamente a ServicesList', async () => {
     const handleBack = () => mockNavigate('ServicesList');
     handleBack();
 
     expect(mockGoBack).not.toHaveBeenCalled();
   });
 
-  it('navega a ServicesList independientemente del origen (dashboard o lista)', () => {
+  it('navega a ServicesList independientemente del origen (dashboard o lista)', async () => {
     // Caso 1: llegó desde el dashboard
     const handleBackFromDashboard = () => mockNavigate('ServicesList');
     handleBackFromDashboard();
@@ -123,7 +123,7 @@ describe('ServiceDetailScreen — navegación al salir', () => {
     });
   });
 
-  it('el destino de navegación es siempre ServicesList (no goBack, no Home)', () => {
+  it('el destino de navegación es siempre ServicesList (no goBack, no Home)', async () => {
     const EXPECTED_DESTINATION = 'ServicesList';
     const handleBack = () => mockNavigate(EXPECTED_DESTINATION);
     handleBack();
@@ -138,7 +138,7 @@ describe('ServiceDetailScreen — navegación al salir', () => {
 // ─── Lógica de navegación: navigate vs goBack ─────────────────────────────────
 
 describe('navigate vs goBack — diferencia de comportamiento', () => {
-  it('goBack() depende del historial del stack (comportamiento anterior — no deseado)', () => {
+  it('goBack() depende del historial del stack (comportamiento anterior — no deseado)', async () => {
     // goBack() desde dashboard → vuelve al dashboard (incorrecto)
     // goBack() desde lista → vuelve a la lista (correcto por casualidad)
     // El comportamiento es inconsistente según el origen
@@ -149,7 +149,7 @@ describe('navigate vs goBack — diferencia de comportamiento', () => {
     expect(goBackBehavior('list')).toBe('ServicesList');       // correcto
   });
 
-  it('navigate(ServicesList) siempre lleva a ServicesList (comportamiento nuevo — correcto)', () => {
+  it('navigate(ServicesList) siempre lleva a ServicesList (comportamiento nuevo — correcto)', async () => {
     // navigate('ServicesList') siempre aterriza en ServicesScreen
     const navigateBehavior = (_origin: 'dashboard' | 'list') => 'ServicesList';
 

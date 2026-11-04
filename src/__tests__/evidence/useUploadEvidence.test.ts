@@ -15,8 +15,8 @@ jest.mock('@/features/evidence/api/evidenceApi');
 describe('useUploadEvidence — estado inicial', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('inicia sin imagen, sin subir, sin error', () => {
-    const { result } = renderHook(() => useUploadEvidence());
+  it('inicia sin imagen, sin subir, sin error', async () => {
+    const { result } = await renderHook(() => useUploadEvidence());
     expect(result.current.imageUri).toBeNull();
     expect(result.current.uploaded).toBe(false);
     expect(result.current.uploading).toBe(false);
@@ -31,7 +31,7 @@ describe('useUploadEvidence — requestPermission', () => {
 
   it('permissionGranted=true cuando el usuario acepta', async () => {
     (Camera.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
-    const { result } = renderHook(() => useUploadEvidence());
+    const { result } = await renderHook(() => useUploadEvidence());
     await act(async () => { await result.current.requestPermission(); });
     expect(result.current.permissionGranted).toBe(true);
     expect(result.current.error).toBeNull();
@@ -39,7 +39,7 @@ describe('useUploadEvidence — requestPermission', () => {
 
   it('permissionGranted=false y error cuando el usuario deniega', async () => {
     (Camera.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'denied' });
-    const { result } = renderHook(() => useUploadEvidence());
+    const { result } = await renderHook(() => useUploadEvidence());
     await act(async () => { await result.current.requestPermission(); });
     expect(result.current.permissionGranted).toBe(false);
     expect(result.current.error).toBe('Permiso de cámara denegado');
@@ -51,8 +51,8 @@ describe('useUploadEvidence — requestPermission', () => {
 describe('useUploadEvidence — setImageUri', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('actualiza imageUri', () => {
-    const { result } = renderHook(() => useUploadEvidence());
+  it('actualiza imageUri', async () => {
+    const { result } = await renderHook(() => useUploadEvidence());
     act(() => { result.current.setImageUri('file://photo.jpg'); });
     expect(result.current.imageUri).toBe('file://photo.jpg');
   });
@@ -64,7 +64,7 @@ describe('useUploadEvidence — upload', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('falla con error cuando no hay imagen', async () => {
-    const { result } = renderHook(() => useUploadEvidence());
+    const { result } = await renderHook(() => useUploadEvidence());
     let ok = true;
     await act(async () => { ok = await result.current.upload('svc-1'); });
     expect(ok).toBe(false);
@@ -73,7 +73,7 @@ describe('useUploadEvidence — upload', () => {
 
   it('sube correctamente y marca uploaded=true', async () => {
     (evidenceApi.upload as jest.Mock).mockResolvedValue({ id: 'ev-1' });
-    const { result } = renderHook(() => useUploadEvidence());
+    const { result } = await renderHook(() => useUploadEvidence());
     act(() => { result.current.setImageUri('file://photo.jpg'); });
     let ok = false;
     await act(async () => { ok = await result.current.upload('svc-1'); });
@@ -84,7 +84,7 @@ describe('useUploadEvidence — upload', () => {
 
   it('retorna false y establece error cuando la API falla', async () => {
     (evidenceApi.upload as jest.Mock).mockRejectedValue({ userMessage: 'Error al subir' });
-    const { result } = renderHook(() => useUploadEvidence());
+    const { result } = await renderHook(() => useUploadEvidence());
     act(() => { result.current.setImageUri('file://photo.jpg'); });
     let ok = true;
     await act(async () => { ok = await result.current.upload('svc-1'); });
@@ -101,7 +101,7 @@ describe('useUploadEvidence — reset', () => {
 
   it('limpia todo el estado tras una subida exitosa', async () => {
     (evidenceApi.upload as jest.Mock).mockResolvedValue({});
-    const { result } = renderHook(() => useUploadEvidence());
+    const { result } = await renderHook(() => useUploadEvidence());
     act(() => { result.current.setImageUri('file://photo.jpg'); });
     await act(async () => { await result.current.upload('svc-1'); });
     act(() => { result.current.reset(); });
@@ -110,8 +110,8 @@ describe('useUploadEvidence — reset', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('reset desde estado inicial no lanza error', () => {
-    const { result } = renderHook(() => useUploadEvidence());
+  it('reset desde estado inicial no lanza error', async () => {
+    const { result } = await renderHook(() => useUploadEvidence());
     expect(() => act(() => { result.current.reset(); })).not.toThrow();
   });
 });
@@ -125,7 +125,7 @@ describe('P-1: upload sin imagen siempre retorna false (PBT)', () => {
         fc.uuid(),
         async (serviceId) => {
           jest.clearAllMocks();
-          const { result } = renderHook(() => useUploadEvidence());
+          const { result } = await renderHook(() => useUploadEvidence());
           let ok = true;
           await act(async () => { ok = await result.current.upload(serviceId); });
           expect(ok).toBe(false);
@@ -139,12 +139,12 @@ describe('P-1: upload sin imagen siempre retorna false (PBT)', () => {
 // ─── PBT: reset siempre deja imageUri=null ────────────────────────────────────
 
 describe('P-2: reset siempre limpia imageUri (PBT)', () => {
-  it('P-2: cualquier URI seguido de reset → imageUri es null', () => {
-    fc.assert(
-      fc.property(
+  it('P-2: cualquier URI seguido de reset → imageUri es null', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.webUrl(),
-        (uri) => {
-          const { result } = renderHook(() => useUploadEvidence());
+        async (uri) => {
+          const { result } = await renderHook(() => useUploadEvidence());
           act(() => { result.current.setImageUri(uri); });
           act(() => { result.current.reset(); });
           expect(result.current.imageUri).toBeNull();

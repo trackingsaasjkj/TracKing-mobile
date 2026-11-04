@@ -33,6 +33,8 @@ export interface Service {
   payment_method_id?: string | null;
   /** Objeto del método de pago (incluido en el SELECT del backend) */
   paymentMethod?: PaymentMethodEntity | null;
+  /** Enum legado para compatibilidad con datos históricos */
+  payment_method?: string | null;
   payment_status: PaymentStatus;
   is_settled_courier: boolean;
   is_settled_customer: boolean;

@@ -66,7 +66,7 @@ describe('wsClient (native WebSocket)', () => {
     return require('@/core/api/wsClient').wsClient;
   }
 
-  it('creates WebSocket with correct URL containing token', () => {
+  it('creates WebSocket with correct URL containing token', async () => {
     const client = getClient();
     client.connect('my-token');
     expect(mockWsInstance).not.toBeNull();
@@ -75,7 +75,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(mockWsInstance.url).toContain('transport=websocket');
   });
 
-  it('does not create new socket if already connected with same token', () => {
+  it('does not create new socket if already connected with same token', async () => {
     const client = getClient();
     client.connect('same-token');
     const first = mockWsInstance;
@@ -84,7 +84,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(mockWsInstance).toBe(first);
   });
 
-  it('sends SIO connect packet after receiving EIO open message', () => {
+  it('sends SIO connect packet after receiving EIO open message', async () => {
     const client = getClient();
     client.connect('token');
     mockWsInstance.simulateOpen();
@@ -96,7 +96,7 @@ describe('wsClient (native WebSocket)', () => {
     );
   });
 
-  it('responds to EIO ping with pong', () => {
+  it('responds to EIO ping with pong', async () => {
     const client = getClient();
     client.connect('token');
     mockWsInstance.simulateOpen();
@@ -106,7 +106,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(mockSend).toHaveBeenCalledWith('3'); // EIO pong
   });
 
-  it('emits service:updated event to registered listeners', () => {
+  it('emits service:updated event to registered listeners', async () => {
     const client = getClient();
     client.connect('token');
     const handler = jest.fn();
@@ -120,7 +120,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(handler).toHaveBeenCalledWith({ id: 'svc-1', status: 'ACCEPTED' });
   });
 
-  it('unsubscribe removes listener', () => {
+  it('unsubscribe removes listener', async () => {
     const client = getClient();
     client.connect('token');
     const handler = jest.fn();
@@ -134,7 +134,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('schedules reconnect with 1s backoff on abnormal close', () => {
+  it('schedules reconnect with 1s backoff on abnormal close', async () => {
     const client = getClient();
     client.connect('token');
     const firstWs = mockWsInstance;
@@ -146,7 +146,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(mockWsInstance).not.toBe(firstWs); // new socket created
   });
 
-  it('stops reconnecting after max attempts', () => {
+  it('stops reconnecting after max attempts', async () => {
     const client = getClient();
     client.connect('token');
 
@@ -167,7 +167,7 @@ describe('wsClient (native WebSocket)', () => {
     expect(wsCount).toBe(countAfterMax);
   });
 
-  it('does not reconnect after manual disconnect', () => {
+  it('does not reconnect after manual disconnect', async () => {
     const client = getClient();
     client.connect('token');
     const firstWs = mockWsInstance;

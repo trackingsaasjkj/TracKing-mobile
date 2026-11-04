@@ -76,7 +76,7 @@ describe('useCompleteStop — execute exitoso', () => {
 
   it('llama a routesApi.completeStop con los datos correctos', async () => {
     (routesApi.completeStop as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload());
@@ -92,7 +92,7 @@ describe('useCompleteStop — execute exitoso', () => {
 
   it('retorna ok:true en éxito', async () => {
     (routesApi.completeStop as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     let res: any;
     await act(async () => {
@@ -104,7 +104,7 @@ describe('useCompleteStop — execute exitoso', () => {
 
   it('actualiza la parada en el store a COMPLETED', async () => {
     (routesApi.completeStop as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload());
@@ -116,7 +116,7 @@ describe('useCompleteStop — execute exitoso', () => {
 
   it('no modifica otras paradas en el store', async () => {
     (routesApi.completeStop as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload());
@@ -128,7 +128,7 @@ describe('useCompleteStop — execute exitoso', () => {
 
   it('envía photo_url cuando se incluye', async () => {
     (routesApi.completeStop as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload({ photo_url: 'file:///photo.jpg' }));
@@ -151,7 +151,7 @@ describe('useCompleteStop — execute con error', () => {
 
   it('retorna ok:false con userMessage del error', async () => {
     (routesApi.completeStop as jest.Mock).mockRejectedValue({ userMessage: 'Parada ya completada' });
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     let res: any;
     await act(async () => {
@@ -164,7 +164,7 @@ describe('useCompleteStop — execute con error', () => {
 
   it('retorna mensaje genérico cuando no hay userMessage', async () => {
     (routesApi.completeStop as jest.Mock).mockRejectedValue(new Error('500'));
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     let res: any;
     await act(async () => {
@@ -177,7 +177,7 @@ describe('useCompleteStop — execute con error', () => {
 
   it('no actualiza el store en caso de error', async () => {
     (routesApi.completeStop as jest.Mock).mockRejectedValue({ userMessage: 'Error' });
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload());
@@ -189,7 +189,7 @@ describe('useCompleteStop — execute con error', () => {
 
   it('loading queda en null tras el error', async () => {
     (routesApi.completeStop as jest.Mock).mockRejectedValue({ userMessage: 'Error' });
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload());
@@ -207,14 +207,14 @@ describe('useCompleteStop — loading state', () => {
     jest.clearAllMocks();
   });
 
-  it('loading es null al inicio', () => {
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+  it('loading es null al inicio', async () => {
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
     expect(result.current.loading).toBeNull();
   });
 
   it('loading se limpia a null tras el éxito', async () => {
     (routesApi.completeStop as jest.Mock).mockResolvedValue(undefined);
-    const { result } = renderHook(() => useCompleteStop(), { wrapper });
+    const { result } = await renderHook(() => useCompleteStop(), { wrapper });
 
     await act(async () => {
       await result.current.execute('route-1', 's1', makePayload());

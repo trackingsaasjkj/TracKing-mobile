@@ -59,7 +59,7 @@ function buildService(id: string, status: Service['status'] = 'DELIVERED'): Serv
 describe('useServiceDetail — lógica de resolución store vs fetch', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('usa el servicio del store cuando está disponible (no hace fetch)', () => {
+  it('usa el servicio del store cuando está disponible (no hace fetch)', async () => {
     const service = buildService('svc-active', 'ASSIGNED');
     const storeServices = [service, buildService('svc-other')];
 
@@ -73,7 +73,7 @@ describe('useServiceDetail — lógica de resolución store vs fetch', () => {
     expect(servicesApi.getById).not.toHaveBeenCalled();
   });
 
-  it('activa el fetch cuando el servicio NO está en el store (viene del historial)', () => {
+  it('activa el fetch cuando el servicio NO está en el store (viene del historial)', async () => {
     const storeServices = [buildService('svc-today')];
 
     // Simula la lógica del hook: buscar en store
@@ -84,7 +84,7 @@ describe('useServiceDetail — lógica de resolución store vs fetch', () => {
     expect(shouldFetch).toBe(true); // enabled: true en useQuery
   });
 
-  it('retorna null cuando el store está vacío y el fetch aún no completó', () => {
+  it('retorna null cuando el store está vacío y el fetch aún no completó', async () => {
     const storeServices: Service[] = [];
     const fetchedData: Service | undefined = undefined;
 
@@ -94,7 +94,7 @@ describe('useServiceDetail — lógica de resolución store vs fetch', () => {
     expect(service).toBeNull();
   });
 
-  it('retorna el servicio del fetch cuando no está en el store', () => {
+  it('retorna el servicio del fetch cuando no está en el store', async () => {
     const storeServices: Service[] = [];
     const fetchedService = buildService('svc-historical');
 
@@ -138,7 +138,7 @@ describe('servicesApi.getById', () => {
 // ─── QueryClient: cache del detalle ──────────────────────────────────────────
 
 describe('QueryClient: cache key del detalle de servicio', () => {
-  it('la query key incluye el serviceId para cachés independientes por servicio', () => {
+  it('la query key incluye el serviceId para cachés independientes por servicio', async () => {
     const queryClient = new QueryClient();
 
     queryClient.setQueryData(['courier-service-detail', 'svc-1'], buildService('svc-1'));
@@ -155,7 +155,7 @@ describe('QueryClient: cache key del detalle de servicio', () => {
     queryClient.clear();
   });
 
-  it('setQueryData actualiza el caché del detalle tras una acción', () => {
+  it('setQueryData actualiza el caché del detalle tras una acción', async () => {
     const queryClient = new QueryClient();
     const original = buildService('svc-1', 'IN_TRANSIT');
     queryClient.setQueryData(['courier-service-detail', 'svc-1'], original);

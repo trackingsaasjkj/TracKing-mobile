@@ -61,14 +61,14 @@ describe('wsClient — status tracking', () => {
 
   // ── Initial state ──────────────────────────────────────────────────────────
 
-  it('initial status is disconnected', () => {
+  it('initial status is disconnected', async () => {
     const client = getClient();
     expect(client.status).toBe('disconnected');
   });
 
   // ── Connected ──────────────────────────────────────────────────────────────
 
-  it('status becomes connected after SIO namespace connect packet', () => {
+  it('status becomes connected after SIO namespace connect packet', async () => {
     const client = getClient();
     client.connect('token');
 
@@ -80,7 +80,7 @@ describe('wsClient — status tracking', () => {
     expect(client.status).toBe('connected');
   });
 
-  it('onStatusChange fires with connected when namespace connects', () => {
+  it('onStatusChange fires with connected when namespace connects', async () => {
     const client = getClient();
     const handler = jest.fn();
     client.onStatusChange(handler);
@@ -94,7 +94,7 @@ describe('wsClient — status tracking', () => {
 
   // ── Reconnecting ───────────────────────────────────────────────────────────
 
-  it('status becomes reconnecting on abnormal close', () => {
+  it('status becomes reconnecting on abnormal close', async () => {
     const client = getClient();
     const handler = jest.fn();
     client.onStatusChange(handler);
@@ -106,7 +106,7 @@ describe('wsClient — status tracking', () => {
     expect(client.status).toBe('reconnecting');
   });
 
-  it('status becomes reconnecting on error', () => {
+  it('status becomes reconnecting on error', async () => {
     const client = getClient();
     const handler = jest.fn();
     client.onStatusChange(handler);
@@ -119,7 +119,7 @@ describe('wsClient — status tracking', () => {
 
   // ── Disconnected ───────────────────────────────────────────────────────────
 
-  it('status becomes disconnected after manual disconnect', () => {
+  it('status becomes disconnected after manual disconnect', async () => {
     const client = getClient();
 
     // First connect and reach connected state
@@ -137,7 +137,7 @@ describe('wsClient — status tracking', () => {
     expect(client.status).toBe('disconnected');
   });
 
-  it('status becomes disconnected after max reconnect attempts', () => {
+  it('status becomes disconnected after max reconnect attempts', async () => {
     const client = getClient();
     const handler = jest.fn();
     client.onStatusChange(handler);
@@ -159,7 +159,7 @@ describe('wsClient — status tracking', () => {
 
   // ── onStatusChange unsubscribe ─────────────────────────────────────────────
 
-  it('unsubscribed handler is not called on status change', () => {
+  it('unsubscribed handler is not called on status change', async () => {
     const client = getClient();
     const handler = jest.fn();
     const unsub = client.onStatusChange(handler);
@@ -173,7 +173,7 @@ describe('wsClient — status tracking', () => {
 
   // ── No duplicate events ────────────────────────────────────────────────────
 
-  it('does not fire handler if status does not change', () => {
+  it('does not fire handler if status does not change', async () => {
     const client = getClient();
     // Connect and reach connected state
     client.connect('token');
@@ -191,7 +191,7 @@ describe('wsClient — status tracking', () => {
 
   // ── Multiple listeners ─────────────────────────────────────────────────────
 
-  it('multiple listeners all receive status changes', () => {
+  it('multiple listeners all receive status changes', async () => {
     const client = getClient();
     const h1 = jest.fn();
     const h2 = jest.fn();

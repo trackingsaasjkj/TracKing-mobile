@@ -18,5 +18,7 @@ export function getPaymentLabel(service: Service): string {
     CREDIT: 'Crédito',
   };
 
-  return PAYMENT_LABELS[service.payment_method] ?? service.payment_method ?? '—';
+  const legacyPaymentMethod = service.payment_method ?? '';
+  if (!legacyPaymentMethod) return '—';
+  return PAYMENT_LABELS[legacyPaymentMethod] ?? legacyPaymentMethod;
 }

@@ -51,15 +51,15 @@ describe('useEarningsUpdates', () => {
     queryClient.clear();
   });
 
-  it('registers listener for settlement:created on mount', () => {
-    renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
+  it('registers listener for settlement:created on mount', async () => {
+    await renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
     expect(wsClient.on).toHaveBeenCalledWith('settlement:created', expect.any(Function));
   });
 
   it('invalidates courier-earnings query when settlement:created fires', async () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
 
-    renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
+    await renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
 
     await act(async () => {
       emitWs('settlement:created', { id: 'liq-1', total_earned: 50000 });
@@ -68,16 +68,16 @@ describe('useEarningsUpdates', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['courier-earnings'] });
   });
 
-  it('does not register listener when accessToken is null', () => {
+  it('does not register listener when accessToken is null', async () => {
     useAuthStore.setState({ accessToken: null, isAuthenticated: false, user: null });
-    renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
+    await renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
     expect(wsClient.on).not.toHaveBeenCalled();
   });
 
   it('does not invalidate for unrelated events', async () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
 
-    renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
+    await renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
 
     await act(async () => {
       emitWs('service:updated', { id: 'svc-1' });
@@ -90,7 +90,7 @@ describe('useEarningsUpdates', () => {
   it('invalidates multiple times for multiple settlement:created events', async () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
 
-    renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
+    await renderHook(() => useEarningsUpdates(), { wrapper: makeWrapper(queryClient) });
 
     await act(async () => {
       emitWs('settlement:created', { id: 'liq-1' });
@@ -105,11 +105,11 @@ describe('useEarningsUpdates', () => {
   it('unsubscribes listener on unmount', async () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
 
-    const { unmount } = renderHook(() => useEarningsUpdates(), {
+    const { unmount } = await renderHook(() => useEarningsUpdates(), {
       wrapper: makeWrapper(queryClient),
     });
 
-    unmount();
+    await unmount();
 
     await act(async () => {
       emitWs('settlement:created', { id: 'liq-1' });

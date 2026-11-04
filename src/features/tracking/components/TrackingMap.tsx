@@ -15,7 +15,7 @@ interface TrackingMapProps {
 
 export function TrackingMap({ active, latitude, longitude, permissionDenied }: TrackingMapProps) {
   const { colors } = useTheme();
-  const webViewRef = useRef<WebViewType>(null);
+  const webViewRef = useRef<WebViewType<{}>>(null);
 
   // Build the initial HTML only once when we first get valid coords.
   // After that, coordinate updates are sent via postMessage — no full reload.
@@ -86,7 +86,7 @@ export function TrackingMap({ active, latitude, longitude, permissionDenied }: T
       </View>
 
       <View style={[styles.mapWrapper, { backgroundColor: colors.neutral200 }]}>
-        <WebView
+        <WebView<{}>
           ref={webViewRef}
           source={{ html: mapHtml }}
           style={styles.webview}

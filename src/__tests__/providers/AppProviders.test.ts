@@ -15,19 +15,19 @@ const queryClient = new QueryClient({
 });
 
 describe('QueryClient mobile — configuración', () => {
-  it('staleTime debe ser 60_000 ms (1 minuto)', () => {
+  it('staleTime debe ser 60_000 ms (1 minuto)', async () => {
     const staleTime = queryClient.getDefaultOptions().queries?.staleTime;
     expect(staleTime).toBe(60_000);
   });
 
-  it('gcTime debe ser 600_000 ms (10 minutos)', () => {
+  it('gcTime debe ser 600_000 ms (10 minutos)', async () => {
     const gcTime = queryClient.getDefaultOptions().queries?.gcTime;
     expect(gcTime).toBe(600_000);
   });
 });
 
 describe('apiClient mobile — configuración', () => {
-  it('timeout debe ser 10_000 ms (10 segundos)', () => {
+  it('timeout debe ser 10_000 ms (10 segundos)', async () => {
     expect(apiClient.defaults.timeout).toBe(10_000);
   });
 });

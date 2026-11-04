@@ -37,15 +37,15 @@ describe('useDashboardUpdates', () => {
     useAuthStore.setState({ accessToken: 'test-token', isAuthenticated: true, user: null });
   });
 
-  it('registers listener for service:assigned on mount', () => {
+  it('registers listener for service:assigned on mount', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useDashboardUpdates(onRefresh));
+    await renderHook(() => useDashboardUpdates(onRefresh));
     expect(wsClient.on).toHaveBeenCalledWith('service:assigned', expect.any(Function));
   });
 
-  it('calls onRefresh when service:assigned event fires', () => {
+  it('calls onRefresh when service:assigned event fires', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useDashboardUpdates(onRefresh));
+    await renderHook(() => useDashboardUpdates(onRefresh));
 
     act(() => {
       emitWs('service:assigned', { id: 'svc-new', status: 'ASSIGNED' });
@@ -54,16 +54,16 @@ describe('useDashboardUpdates', () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it('does not register listener when accessToken is null', () => {
+  it('does not register listener when accessToken is null', async () => {
     useAuthStore.setState({ accessToken: null, isAuthenticated: false, user: null });
     const onRefresh = jest.fn();
-    renderHook(() => useDashboardUpdates(onRefresh));
+    await renderHook(() => useDashboardUpdates(onRefresh));
     expect(wsClient.on).not.toHaveBeenCalled();
   });
 
-  it('does not call onRefresh for service:updated events', () => {
+  it('does not call onRefresh for service:updated events', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useDashboardUpdates(onRefresh));
+    await renderHook(() => useDashboardUpdates(onRefresh));
 
     act(() => {
       emitWs('service:updated', { id: 'svc-1', status: 'ACCEPTED' });
@@ -72,9 +72,9 @@ describe('useDashboardUpdates', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
-  it('calls onRefresh multiple times for multiple service:assigned events', () => {
+  it('calls onRefresh multiple times for multiple service:assigned events', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useDashboardUpdates(onRefresh));
+    await renderHook(() => useDashboardUpdates(onRefresh));
 
     act(() => {
       emitWs('service:assigned', { id: 'svc-1' });
@@ -85,11 +85,11 @@ describe('useDashboardUpdates', () => {
     expect(onRefresh).toHaveBeenCalledTimes(3);
   });
 
-  it('unsubscribes listener on unmount', () => {
+  it('unsubscribes listener on unmount', async () => {
     const onRefresh = jest.fn();
-    const { unmount } = renderHook(() => useDashboardUpdates(onRefresh));
+    const { unmount } = await renderHook(() => useDashboardUpdates(onRefresh));
 
-    unmount();
+    await unmount();
 
     act(() => {
       emitWs('service:assigned', { id: 'svc-1' });
@@ -98,17 +98,17 @@ describe('useDashboardUpdates', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
-  it('re-registers listener when accessToken changes', () => {
+  it('re-registers listener when accessToken changes', async () => {
     const onRefresh = jest.fn();
     useAuthStore.setState({ accessToken: null, isAuthenticated: false, user: null });
 
-    const { rerender } = renderHook(() => useDashboardUpdates(onRefresh));
+    const { rerender } = await renderHook(() => useDashboardUpdates(onRefresh));
     expect(wsClient.on).not.toHaveBeenCalled();
 
     act(() => {
       useAuthStore.setState({ accessToken: 'new-token', isAuthenticated: true, user: null });
     });
-    rerender({});
+    await rerender({});
 
     expect(wsClient.on).toHaveBeenCalledWith('service:assigned', expect.any(Function));
   });

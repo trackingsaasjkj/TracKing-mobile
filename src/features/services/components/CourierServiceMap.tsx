@@ -81,7 +81,7 @@ export function CourierServiceMap({
   navigationTarget = 'delivery',
 }: CourierServiceMapProps) {
   const { colors } = useTheme();
-  const webViewRef = useRef<WebViewType>(null);
+  const webViewRef = useRef<WebViewType<{}>>(null);
 
   // Resolve which point Maps/Waze should navigate to based on the current phase
   const navLat = navigationTarget === 'pickup' ? originLat : destinationLat;
@@ -135,7 +135,7 @@ export function CourierServiceMap({
       { borderColor: colors.neutral200 },
       fullScreen && styles.containerFullScreen,
     ]}>
-      <WebView
+      <WebView<{}>
         ref={webViewRef}
         source={{ html: mapHtml }}
         style={styles.map}

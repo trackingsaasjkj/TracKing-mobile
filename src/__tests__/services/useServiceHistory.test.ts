@@ -64,18 +64,18 @@ function buildPage(
 // ─── flattenHistoryPages ──────────────────────────────────────────────────────
 
 describe('flattenHistoryPages', () => {
-  it('retorna array vacío cuando data es undefined', () => {
+  it('retorna array vacío cuando data es undefined', async () => {
     expect(flattenHistoryPages(undefined)).toEqual([]);
   });
 
-  it('aplana una sola página correctamente', () => {
+  it('aplana una sola página correctamente', async () => {
     const services = [buildService('s1'), buildService('s2')];
     const data = { pages: [buildPage(services, 1, 20, 2)], pageParams: [1] };
     expect(flattenHistoryPages(data)).toHaveLength(2);
     expect(flattenHistoryPages(data)[0].id).toBe('s1');
   });
 
-  it('aplana múltiples páginas en orden', () => {
+  it('aplana múltiples páginas en orden', async () => {
     const page1 = [buildService('s1'), buildService('s2')];
     const page2 = [buildService('s3'), buildService('s4')];
     const data = {
@@ -87,7 +87,7 @@ describe('flattenHistoryPages', () => {
     expect(result.map((s) => s.id)).toEqual(['s1', 's2', 's3', 's4']);
   });
 
-  it('retorna array vacío cuando todas las páginas tienen data vacía', () => {
+  it('retorna array vacío cuando todas las páginas tienen data vacía', async () => {
     const data = {
       pages: [buildPage([], 1, 20, 0)],
       pageParams: [1],
@@ -141,22 +141,22 @@ describe('getNextPageParam — lógica de infinite scroll', () => {
     return fetched < lastPage.total ? lastPage.page + 1 : undefined;
   }
 
-  it('retorna página 2 cuando hay más items', () => {
+  it('retorna página 2 cuando hay más items', async () => {
     const page = buildPage([buildService('s1')], 1, 20, 50);
     expect(getNextPageParam(page)).toBe(2);
   });
 
-  it('retorna undefined en la última página', () => {
+  it('retorna undefined en la última página', async () => {
     const page = buildPage([], 3, 20, 50);
     expect(getNextPageParam(page)).toBeUndefined();
   });
 
-  it('retorna undefined cuando total es 0', () => {
+  it('retorna undefined cuando total es 0', async () => {
     const page = buildPage([], 1, 20, 0);
     expect(getNextPageParam(page)).toBeUndefined();
   });
 
-  it('retorna undefined cuando fetched === total exactamente', () => {
+  it('retorna undefined cuando fetched === total exactamente', async () => {
     const page = buildPage([], 2, 10, 20);
     expect(getNextPageParam(page)).toBeUndefined();
   });
@@ -165,7 +165,7 @@ describe('getNextPageParam — lógica de infinite scroll', () => {
 // ─── QueryClient: invalidación de historial ──────────────────────────────────
 
 describe('QueryClient: cache key del historial', () => {
-  it('la query key incluye el status para separar cachés por estado', () => {
+  it('la query key incluye el status para separar cachés por estado', async () => {
     const queryClient = new QueryClient();
 
     // Simula que hay datos en caché para DELIVERED y CANCELLED por separado

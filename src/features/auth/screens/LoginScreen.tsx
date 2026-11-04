@@ -36,6 +36,10 @@ export function LoginScreen() {
     defaultValues: { email: '', password: '' },
   });
 
+  const onSubmit = handleSubmit((data) => {
+    void login(data.email, data.password);
+  });
+
   const isDisabled = isLoading || cooldownSeconds > 0;
 
   return (
@@ -104,7 +108,7 @@ export function LoginScreen() {
 
             <TouchableOpacity
               style={[styles.button, { backgroundColor: colors.primary }, isDisabled && { backgroundColor: colors.neutral200 }]}
-              onPress={handleSubmit((data) => login(data.email, data.password))}
+              onPress={() => { void onSubmit(); }}
               disabled={isDisabled}
               activeOpacity={0.85}
               accessibilityRole="button"

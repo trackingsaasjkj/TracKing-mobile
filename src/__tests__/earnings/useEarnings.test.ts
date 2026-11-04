@@ -61,9 +61,9 @@ function wrapper() {
 describe('useEarnings — carga inicial', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  it('inicia en estado loading', () => {
+  it('inicia en estado loading', async () => {
     (earningsApi.getSummary as jest.Mock).mockResolvedValue(makeSummary());
-    const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+    const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
     expect(result.current.loading).toBe(true);
   });
 
@@ -71,7 +71,7 @@ describe('useEarnings — carga inicial', () => {
     const summary = makeSummary();
     (earningsApi.getSummary as jest.Mock).mockResolvedValue(summary);
 
-    const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+    const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.summary?.courier_payment).toBe(640000);
@@ -83,7 +83,7 @@ describe('useEarnings — carga inicial', () => {
   it('liquidations viene de summary.settlements — no hay llamada separada', async () => {
     (earningsApi.getSummary as jest.Mock).mockResolvedValue(makeSummary());
 
-    const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+    const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     // Solo se llama getSummary — no getSettlements por separado
@@ -94,7 +94,7 @@ describe('useEarnings — carga inicial', () => {
   it('establece error cuando el endpoint falla', async () => {
     (earningsApi.getSummary as jest.Mock).mockRejectedValue({ userMessage: 'Sin conexión' });
 
-    const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+    const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.error).toBe('Sin conexión');
@@ -105,7 +105,7 @@ describe('useEarnings — carga inicial', () => {
   it('retorna error genérico cuando no hay userMessage', async () => {
     (earningsApi.getSummary as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-    const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+    const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.error).toBe('Error al cargar ganancias');
@@ -116,7 +116,7 @@ describe('useEarnings — carga inicial', () => {
       makeSummary({ settlements: [], total_settlements: 0 }),
     );
 
-    const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+    const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.loading).toBe(false));
 
     expect(result.current.liquidations).toEqual([]);
@@ -127,7 +127,7 @@ describe('useEarnings — carga inicial', () => {
 // ─── Endpoints correctos ──────────────────────────────────────────────────────
 
 describe('earningsApi — endpoints correctos (BUG-09 fix)', () => {
-  it('getSummary apunta a /api/courier/settlements/earnings (no /api/liquidations)', () => {
+  it('getSummary apunta a /api/courier/settlements/earnings (no /api/liquidations)', async () => {
     // Verificamos que el mock fue configurado con el nombre correcto
     // La URL real se verifica en integración; aquí validamos que el método existe
     expect(typeof earningsApi.getSummary).toBe('function');
@@ -156,7 +156,7 @@ describe('P-EARN-1: courier_payment del summary siempre es número (PBT)', () =>
             makeSummary({ courier_payment: payment, total_services: services, settlements }),
           );
 
-          const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+          const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
           await waitFor(() => expect(result.current.loading).toBe(false));
 
           expect(typeof result.current.summary?.courier_payment).toBe('number');
@@ -185,7 +185,7 @@ describe('P-EARN-2: liquidations siempre es igual a summary.settlements (PBT)', 
             makeSummary({ settlements, total_settlements: count }),
           );
 
-          const { result } = renderHook(() => useEarnings(), { wrapper: wrapper() });
+          const { result } = await renderHook(() => useEarnings(), { wrapper: wrapper() });
           await waitFor(() => expect(result.current.loading).toBe(false));
 
           expect(result.current.liquidations).toHaveLength(count);

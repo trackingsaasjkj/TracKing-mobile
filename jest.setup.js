@@ -20,7 +20,7 @@ jest.mock('expo-location', () => ({
 
 // Mock expo-camera (native module)
 jest.mock('expo-camera', () => ({
-  Camera: {},
+  Camera: { requestCameraPermissionsAsync: jest.fn() },
   CameraView: 'CameraView',
   requestCameraPermissionsAsync: jest.fn(),
 }));
@@ -33,7 +33,9 @@ jest.mock('@react-native-community/netinfo', () => ({
 
 // Mock @react-native-firebase/messaging (native module)
 jest.mock('@react-native-firebase/messaging', () => {
-  const messagingInstance = {
+  const messagingInstance = {};
+  return {
+    getMessaging: jest.fn(() => messagingInstance),
     requestPermission: jest.fn(),
     getToken: jest.fn(),
     onTokenRefresh: jest.fn(() => jest.fn()),
@@ -41,13 +43,8 @@ jest.mock('@react-native-firebase/messaging', () => {
     onNotificationOpenedApp: jest.fn(),
     getInitialNotification: jest.fn(),
     setBackgroundMessageHandler: jest.fn(),
+    AuthorizationStatus: { AUTHORIZED: 1, PROVISIONAL: 2, DENIED: -1, NOT_DETERMINED: 0 },
   };
-  const messaging = jest.fn(() => messagingInstance);
-  messaging.AuthorizationStatus = { AUTHORIZED: 1, PROVISIONAL: 2, DENIED: -1, NOT_DETERMINED: 0 };
-  // fcm.service.ts does: require('@react-native-firebase/messaging').default
-  // so we need to expose the mock as both the default export and the module itself
-  messaging.default = messaging;
-  return messaging;
 });
 
 // Mock react-native-safe-area-context

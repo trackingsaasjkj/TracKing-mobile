@@ -24,26 +24,26 @@ describe('useAutoRefresh', () => {
     jest.useRealTimers();
   });
 
-  it('calls onRefresh after the foreground interval', () => {
+  it('calls onRefresh after the foreground interval', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
+    await renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
 
     expect(onRefresh).not.toHaveBeenCalled();
     act(() => { jest.advanceTimersByTime(45_000); });
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it('calls onRefresh multiple times over multiple intervals', () => {
+  it('calls onRefresh multiple times over multiple intervals', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 10_000 }));
+    await renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 10_000 }));
 
     act(() => { jest.advanceTimersByTime(30_000); });
     expect(onRefresh).toHaveBeenCalledTimes(3);
   });
 
-  it('calls onRefresh immediately when app returns to foreground', () => {
+  it('calls onRefresh immediately when app returns to foreground', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
+    await renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
 
     // Simulate app going to background then returning to active
     const appStateHandler = (AppState.addEventListener as jest.Mock).mock.calls[0][1];
@@ -54,9 +54,9 @@ describe('useAutoRefresh', () => {
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
-  it('does not call onRefresh when going from active to background', () => {
+  it('does not call onRefresh when going from active to background', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
+    await renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
 
     const appStateHandler = (AppState.addEventListener as jest.Mock).mock.calls[0][1];
     act(() => { appStateHandler('background'); });
@@ -64,20 +64,20 @@ describe('useAutoRefresh', () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
-  it('clears interval and removes AppState listener on unmount', () => {
+  it('clears interval and removes AppState listener on unmount', async () => {
     const onRefresh = jest.fn();
-    const { unmount } = renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
+    const { unmount } = await renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000 }));
 
-    unmount();
+    await unmount();
 
     act(() => { jest.advanceTimersByTime(90_000); });
     expect(onRefresh).not.toHaveBeenCalled();
     expect(mockRemove).toHaveBeenCalled();
   });
 
-  it('does not start polling when enabled is false', () => {
+  it('does not start polling when enabled is false', async () => {
     const onRefresh = jest.fn();
-    renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000, enabled: false }));
+    await renderHook(() => useAutoRefresh(onRefresh, { foregroundInterval: 45_000, enabled: false }));
 
     act(() => { jest.advanceTimersByTime(90_000); });
     expect(onRefresh).not.toHaveBeenCalled();

@@ -74,7 +74,7 @@ export function ServiceHistoryScreen() {
         refreshControl={
           <RefreshControl
             refreshing={isRefetching && !isFetchingNextPage}
-            onRefresh={refetch}
+            onRefresh={() => { void refetch(); }}
             tintColor={colors.primary}
           />
         }
@@ -94,7 +94,7 @@ export function ServiceHistoryScreen() {
             <View style={styles.footer}>
               <ActivityIndicator size="small" color={colors.primary} />
             </View>
-          ) : null
+          ) : undefined
         }
       />
     </SafeAreaView>

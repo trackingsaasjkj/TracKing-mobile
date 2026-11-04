@@ -73,13 +73,13 @@ afterEach(() => {
 
 describe('useLocation — inactivo', () => {
   it('no envía ubicación cuando active=false', async () => {
-    renderHook(() => useLocation({ active: false }));
+    await renderHook(() => useLocation({ active: false }));
     await act(async () => { jest.runAllTimers(); });
     expect(locationApi.send).not.toHaveBeenCalled();
   });
 
   it('no solicita permisos cuando está inactivo', async () => {
-    renderHook(() => useLocation({ active: false }));
+    await renderHook(() => useLocation({ active: false }));
     await act(async () => { await Promise.resolve(); });
     expect(ExpoLocation.requestForegroundPermissionsAsync).not.toHaveBeenCalled();
   });
@@ -89,7 +89,7 @@ describe('useLocation — inactivo', () => {
 
 describe('useLocation — foreground tracking', () => {
   it('envía ubicación inmediatamente al activarse', async () => {
-    renderHook(() => useLocation({ active: true }));
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
     expect(locationApi.send).toHaveBeenCalledTimes(1);
     expect(locationApi.send).toHaveBeenCalledWith({
@@ -100,7 +100,7 @@ describe('useLocation — foreground tracking', () => {
   });
 
   it('envía ubicación de nuevo a los 15 segundos', async () => {
-    renderHook(() => useLocation({ active: true }));
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
     expect(locationApi.send).toHaveBeenCalledTimes(1);
     await act(async () => {
@@ -111,7 +111,7 @@ describe('useLocation — foreground tracking', () => {
   });
 
   it('envía 3 veces en 30 segundos (inicial + 2 intervalos)', async () => {
-    renderHook(() => useLocation({ active: true }));
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
     await act(async () => {
       jest.advanceTimersByTime(30_000);
@@ -122,19 +122,19 @@ describe('useLocation — foreground tracking', () => {
 
   it('no envía cuando el permiso de primer plano es denegado', async () => {
     setupMocks({ foreground: 'denied' });
-    renderHook(() => useLocation({ active: true }));
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
     expect(locationApi.send).not.toHaveBeenCalled();
   });
 
   it('deja de enviar al desactivarse', async () => {
-    const { rerender } = renderHook<void, { active: boolean }>(
+    const { rerender } = await renderHook<void, { active: boolean }>(
       ({ active }) => useLocation({ active }),
       { initialProps: { active: true } },
     );
     await act(async () => { await Promise.resolve(); });
     const callsBefore = (locationApi.send as jest.Mock).mock.calls.length;
-    rerender({ active: false });
+    await rerender({ active: false });
     await act(async () => {
       jest.advanceTimersByTime(30_000);
       await Promise.resolve();
@@ -148,13 +148,13 @@ describe('useLocation — foreground tracking', () => {
 describe('useLocation — manejo de errores', () => {
   it('errores de red se ignoran silenciosamente', async () => {
     (locationApi.send as jest.Mock).mockRejectedValue(new Error('Network error'));
-    expect(() => renderHook(() => useLocation({ active: true }))).not.toThrow();
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
   });
 
   it('respuesta 400 del backend detiene el tracking en primer plano', async () => {
     (locationApi.send as jest.Mock).mockRejectedValueOnce(makeAxiosError(400));
-    renderHook(() => useLocation({ active: true }));
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
     await act(async () => {
       jest.advanceTimersByTime(30_000);
@@ -167,7 +167,7 @@ describe('useLocation — manejo de errores', () => {
     (locationApi.send as jest.Mock)
       .mockRejectedValueOnce(new Error('timeout'))
       .mockResolvedValue(undefined);
-    renderHook(() => useLocation({ active: true }));
+    await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
     await act(async () => {
       jest.advanceTimersByTime(15_000);
@@ -181,32 +181,32 @@ describe('useLocation — manejo de errores', () => {
 
 describe('useLocation — reactivación', () => {
   it('reanuda el envío tras reactivarse', async () => {
-    const { rerender } = renderHook<void, { active: boolean }>(
+    const { rerender } = await renderHook<void, { active: boolean }>(
       ({ active }) => useLocation({ active }),
       { initialProps: { active: true } },
     );
     await act(async () => { await Promise.resolve(); });
-    rerender({ active: false });
+    await rerender({ active: false });
     await act(async () => { await Promise.resolve(); });
     jest.clearAllMocks();
     setupMocks();
-    rerender({ active: true });
+    await rerender({ active: true });
     await act(async () => { await Promise.resolve(); });
     expect(locationApi.send).toHaveBeenCalledTimes(1);
   });
 
   it('resetea stoppedByBackend al reactivarse tras un 400', async () => {
     (locationApi.send as jest.Mock).mockRejectedValueOnce(makeAxiosError(400));
-    const { rerender } = renderHook<void, { active: boolean }>(
+    const { rerender } = await renderHook<void, { active: boolean }>(
       ({ active }) => useLocation({ active }),
       { initialProps: { active: true } },
     );
     await act(async () => { await Promise.resolve(); });
-    rerender({ active: false });
+    await rerender({ active: false });
     await act(async () => { await Promise.resolve(); });
     jest.clearAllMocks();
     setupMocks();
-    rerender({ active: true });
+    await rerender({ active: true });
     await act(async () => { await Promise.resolve(); });
     expect(locationApi.send).toHaveBeenCalledTimes(1);
   });
@@ -222,7 +222,7 @@ describe('P-1: active=false nunca envía ubicación (PBT)', () => {
         async (ms) => {
           jest.clearAllMocks();
           setupMocks();
-          renderHook(() => useLocation({ active: false }));
+          await renderHook(() => useLocation({ active: false }));
           await act(async () => {
             jest.advanceTimersByTime(ms);
             await Promise.resolve();
@@ -251,7 +251,7 @@ describe('P-2: las coordenadas enviadas al backend coinciden con las del GPS (PB
           });
           (locationApi.send as jest.Mock).mockResolvedValue(undefined);
 
-          renderHook(() => useLocation({ active: true }));
+          await renderHook(() => useLocation({ active: true }));
           await act(async () => { await Promise.resolve(); });
 
           expect(locationApi.send).toHaveBeenCalledWith(

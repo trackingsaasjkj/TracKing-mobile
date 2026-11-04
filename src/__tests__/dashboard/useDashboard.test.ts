@@ -85,7 +85,7 @@ describe('useDashboard — carga inicial', () => {
 
   it('carga servicios y KPIs correctamente', async () => {
     setupMocks([makeService('s1', 'ASSIGNED'), makeService('s2', 'DELIVERED')]);
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.kpis.pending).toBe(1);
     expect(result.current.kpis.completed).toBe(1);
@@ -96,7 +96,7 @@ describe('useDashboard — carga inicial', () => {
     (dashboardApi.getProfile as jest.Mock).mockRejectedValue({ userMessage: 'Sin conexión' });
     (dashboardApi.getAssignedServices as jest.Mock).mockRejectedValue({ userMessage: 'Sin conexión' });
     (earningsApi.getSummary as jest.Mock).mockRejectedValue({});
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.error).toBe('Sin conexión');
   });
@@ -113,21 +113,21 @@ describe('useDashboard — activeServices', () => {
 
   it('incluye servicios ACCEPTED en activeServices', async () => {
     setupMocks([makeService('s1', 'ASSIGNED'), makeService('s2', 'ACCEPTED')]);
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.activeServices.map((s) => s.id)).toContain('s2');
   });
 
   it('incluye servicios IN_TRANSIT en activeServices', async () => {
     setupMocks([makeService('s1', 'IN_TRANSIT')]);
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.activeServices.map((s) => s.id)).toContain('s1');
   });
 
   it('incluye servicios ASSIGNED en activeServices', async () => {
     setupMocks([makeService('s1', 'ASSIGNED'), makeService('s2', 'DELIVERED')]);
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.activeServices.map((s) => s.id)).toContain('s1');
     expect(result.current.activeServices.map((s) => s.id)).not.toContain('s2');
@@ -135,7 +135,7 @@ describe('useDashboard — activeServices', () => {
 
   it('activeServices está vacío cuando no hay servicios', async () => {
     setupMocks([]);
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.activeServices).toHaveLength(0);
   });
@@ -147,7 +147,7 @@ describe('useDashboard — activeServices', () => {
       makeService('s3', 'IN_TRANSIT'),
       makeService('s4', 'DELIVERED'),
     ]);
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(result.current.activeServices).toHaveLength(3);
     expect(result.current.activeServices.map((s) => s.id)).not.toContain('s4');
@@ -165,21 +165,21 @@ describe('useDashboard — operationalStatus (fix BUG-tracking)', () => {
 
   it('IN_SERVICE del backend se guarda como IN_SERVICE en el store (no se convierte)', async () => {
     setupMocks([], 'IN_SERVICE');
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(useAuthStore.getState().user?.operationalStatus).toBe('IN_SERVICE');
   });
 
   it('AVAILABLE del backend se guarda como AVAILABLE', async () => {
     setupMocks([], 'AVAILABLE');
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(useAuthStore.getState().user?.operationalStatus).toBe('AVAILABLE');
   });
 
   it('UNAVAILABLE del backend se guarda como UNAVAILABLE', async () => {
     setupMocks([], 'UNAVAILABLE');
-    const { result } = renderHook(() => useDashboard());
+    const { result } = await renderHook(() => useDashboard());
     await waitFor(() => expect(result.current.loading).toBe(false));
     expect(useAuthStore.getState().user?.operationalStatus).toBe('UNAVAILABLE');
   });
@@ -191,7 +191,7 @@ describe('dashboardApi.computeKPIs — regla de dominio', () => {
   // Usamos la implementación real directamente (no el mock)
   const { dashboardApi: realApi } = jest.requireActual('@/features/dashboard/api/dashboardApi');
 
-  it('pending = ASSIGNED + ACCEPTED', () => {
+  it('pending = ASSIGNED + ACCEPTED', async () => {
     const svcs = [
       makeService('a', 'ASSIGNED'),
       makeService('b', 'ACCEPTED'),
@@ -202,13 +202,13 @@ describe('dashboardApi.computeKPIs — regla de dominio', () => {
     expect(kpis.completed).toBe(1);
   });
 
-  it('lista vacía → todos los KPIs en 0', () => {
+  it('lista vacía → todos los KPIs en 0', async () => {
     const kpis = realApi.computeKPIs([]);
     expect(kpis.pending).toBe(0);
     expect(kpis.completed).toBe(0);
   });
 
-  it('IN_TRANSIT no cuenta como pending ni completed', () => {
+  it('IN_TRANSIT no cuenta como pending ni completed', async () => {
     const svcs = [makeService('a', 'IN_TRANSIT')];
     const kpis = realApi.computeKPIs(svcs);
     expect(kpis.pending).toBe(0);
@@ -221,7 +221,7 @@ describe('dashboardApi.computeKPIs — regla de dominio', () => {
 describe('P-1: pending + completed ≤ total de servicios (PBT)', () => {
   const { dashboardApi: realApi } = jest.requireActual('@/features/dashboard/api/dashboardApi');
 
-  it('P-1: para cualquier lista de servicios, pending + completed nunca supera el total', () => {
+  it('P-1: para cualquier lista de servicios, pending + completed nunca supera el total', async () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -244,7 +244,7 @@ describe('P-1: pending + completed ≤ total de servicios (PBT)', () => {
 describe('P-2: KPIs nunca son negativos (PBT)', () => {
   const { dashboardApi: realApi } = jest.requireActual('@/features/dashboard/api/dashboardApi');
 
-  it('P-2: pending y completed siempre son ≥ 0', () => {
+  it('P-2: pending y completed siempre son ≥ 0', async () => {
     fc.assert(
       fc.property(
         fc.array(

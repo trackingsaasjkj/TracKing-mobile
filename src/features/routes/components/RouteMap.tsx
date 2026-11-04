@@ -34,7 +34,7 @@ function openInWaze(destLat: number, destLng: number) {
 
 export function RouteMap({ stops, activeStopIndex }: RouteMapProps) {
   const { colors } = useTheme()
-  const webViewRef = useRef<WebViewType>(null)
+  const webViewRef = useRef<WebViewType<{}>>(null)
   const { latitude: courierLat, longitude: courierLng } = useTrackingCoords()
 
   // Freeze stop data and colors on first render — same pattern as CourierServiceMap.
@@ -77,7 +77,7 @@ export function RouteMap({ stops, activeStopIndex }: RouteMapProps) {
 
   return (
     <View style={[styles.container, { borderColor: colors.neutral200 }]}>
-      <WebView
+      <WebView<{}>
         ref={webViewRef}
         source={{ html: mapHtml }}
         style={styles.map}

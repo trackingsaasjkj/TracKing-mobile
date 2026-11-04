@@ -33,14 +33,14 @@ describe('useWsStatus', () => {
     jest.clearAllMocks();
   });
 
-  it('returns initial status from wsClient.status', () => {
+  it('returns initial status from wsClient.status', async () => {
     mockCurrentStatus = 'disconnected';
-    const { result } = renderHook(() => useWsStatus());
+    const { result } = await renderHook(() => useWsStatus());
     expect(result.current).toBe('disconnected');
   });
 
-  it('updates to connected when wsClient emits connected', () => {
-    const { result } = renderHook(() => useWsStatus());
+  it('updates to connected when wsClient emits connected', async () => {
+    const { result } = await renderHook(() => useWsStatus());
 
     act(() => {
       emitStatus('connected');
@@ -49,8 +49,8 @@ describe('useWsStatus', () => {
     expect(result.current).toBe('connected');
   });
 
-  it('updates to reconnecting when wsClient emits reconnecting', () => {
-    const { result } = renderHook(() => useWsStatus());
+  it('updates to reconnecting when wsClient emits reconnecting', async () => {
+    const { result } = await renderHook(() => useWsStatus());
 
     act(() => {
       emitStatus('reconnecting');
@@ -59,9 +59,9 @@ describe('useWsStatus', () => {
     expect(result.current).toBe('reconnecting');
   });
 
-  it('updates to disconnected when wsClient emits disconnected after being connected', () => {
+  it('updates to disconnected when wsClient emits disconnected after being connected', async () => {
     mockCurrentStatus = 'connected';
-    const { result } = renderHook(() => useWsStatus());
+    const { result } = await renderHook(() => useWsStatus());
 
     act(() => {
       emitStatus('disconnected');
@@ -70,8 +70,8 @@ describe('useWsStatus', () => {
     expect(result.current).toBe('disconnected');
   });
 
-  it('reflects multiple sequential status changes', () => {
-    const { result } = renderHook(() => useWsStatus());
+  it('reflects multiple sequential status changes', async () => {
+    const { result } = await renderHook(() => useWsStatus());
 
     act(() => { emitStatus('reconnecting'); });
     expect(result.current).toBe('reconnecting');
@@ -83,10 +83,10 @@ describe('useWsStatus', () => {
     expect(result.current).toBe('disconnected');
   });
 
-  it('unsubscribes from wsClient on unmount', () => {
-    const { result, unmount } = renderHook(() => useWsStatus());
+  it('unsubscribes from wsClient on unmount', async () => {
+    const { result, unmount } = await renderHook(() => useWsStatus());
 
-    unmount();
+    await unmount();
 
     // After unmount, emitting should not update the frozen hook state
     act(() => {
@@ -96,9 +96,9 @@ describe('useWsStatus', () => {
     expect(result.current).toBe('disconnected');
   });
 
-  it('calls onStatusChange exactly once on mount', () => {
+  it('calls onStatusChange exactly once on mount', async () => {
     const { wsClient } = require('@/core/api/wsClient');
-    renderHook(() => useWsStatus());
+    await renderHook(() => useWsStatus());
     expect(wsClient.onStatusChange).toHaveBeenCalledTimes(1);
   });
 });

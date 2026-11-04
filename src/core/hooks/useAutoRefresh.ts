@@ -20,7 +20,7 @@ interface AutoRefreshOptions {
  * before giving up and waiting for the next interval.
  */
 export function useAutoRefresh(
-  onRefresh: () => void,
+  onRefresh: () => void | Promise<unknown>,
   options: AutoRefreshOptions = {},
 ): void {
   const { foregroundInterval = 15_000, maxRetries = 3, enabled = true } = options;
@@ -31,7 +31,9 @@ export function useAutoRefresh(
     onRefreshRef.current = onRefresh;
   }, [onRefresh]);
 
-  const appState = useRef<AppStateStatus>(AppState.currentState);
+  const appState = useRef<AppStateStatus | null>(
+    AppState.currentState as AppStateStatus | null,
+  );
   const retryCountRef = useRef(0);
 
   const triggerRefresh = useCallback(() => {

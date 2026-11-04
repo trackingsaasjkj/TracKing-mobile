@@ -29,6 +29,7 @@ export const darkColors = {
   neutral400:   '#64748B',
   neutral500:   '#94A3B8',
   neutral600:   '#334155',
+  neutral700:   '#CBD5E1',
   neutral800:   '#E2E8F0',
   neutral900:   '#F8FAFC',
 

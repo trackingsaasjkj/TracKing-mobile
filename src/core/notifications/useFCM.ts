@@ -97,7 +97,7 @@ async function registerTokenInBackend(token: string): Promise<void> {
  * Navega a la pantalla correcta según el tipo de notificación.
  * Extender según los tipos de notificaciones que se implementen.
  */
-function handleNotificationNavigation(data?: Record<string, string>): void {
+function handleNotificationNavigation(data?: Record<string, string | object>): void {
   if (!data) return;
 
   switch (data.type) {

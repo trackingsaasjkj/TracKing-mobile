@@ -30,18 +30,18 @@ describe('servicesStore — setServices', () => {
     useServicesStore.setState({ services: [], loaded: false });
   });
 
-  it('reemplaza la lista completa', () => {
+  it('reemplaza la lista completa', async () => {
     const svcs = [makeService({ id: 'a' }), makeService({ id: 'b' })];
     useServicesStore.getState().setServices(svcs);
     expect(useServicesStore.getState().services).toHaveLength(2);
   });
 
-  it('marca loaded=true tras el primer setServices', () => {
+  it('marca loaded=true tras el primer setServices', async () => {
     useServicesStore.getState().setServices([makeService()]);
     expect(useServicesStore.getState().loaded).toBe(true);
   });
 
-  it('acepta lista vacía sin error', () => {
+  it('acepta lista vacía sin error', async () => {
     useServicesStore.getState().setServices([makeService()]);
     useServicesStore.getState().setServices([]);
     expect(useServicesStore.getState().services).toHaveLength(0);
@@ -56,13 +56,13 @@ describe('servicesStore — updateService', () => {
     useServicesStore.setState({ services: [], loaded: false });
   });
 
-  it('actualiza el servicio que coincide por id', () => {
+  it('actualiza el servicio que coincide por id', async () => {
     useServicesStore.getState().setServices([makeService({ id: 'svc-1', status: 'ASSIGNED' })]);
     useServicesStore.getState().updateService(makeService({ id: 'svc-1', status: 'ACCEPTED' }));
     expect(useServicesStore.getState().services[0].status).toBe('ACCEPTED');
   });
 
-  it('no afecta otros servicios', () => {
+  it('no afecta otros servicios', async () => {
     useServicesStore.getState().setServices([
       makeService({ id: 'svc-1', status: 'ASSIGNED' }),
       makeService({ id: 'svc-2', status: 'ASSIGNED' }),
@@ -71,13 +71,13 @@ describe('servicesStore — updateService', () => {
     expect(useServicesStore.getState().services[1].status).toBe('ASSIGNED');
   });
 
-  it('ignora ids desconocidos sin lanzar error', () => {
+  it('ignora ids desconocidos sin lanzar error', async () => {
     useServicesStore.getState().setServices([makeService({ id: 'svc-1' })]);
     useServicesStore.getState().updateService(makeService({ id: 'unknown', status: 'DELIVERED' }));
     expect(useServicesStore.getState().services[0].status).toBe('ASSIGNED');
   });
 
-  it('preserva el total de servicios tras update', () => {
+  it('preserva el total de servicios tras update', async () => {
     const svcs = [makeService({ id: 'a' }), makeService({ id: 'b' }), makeService({ id: 'c' })];
     useServicesStore.getState().setServices(svcs);
     useServicesStore.getState().updateService(makeService({ id: 'b', status: 'IN_TRANSIT' }));
@@ -88,7 +88,7 @@ describe('servicesStore — updateService', () => {
 // ─── PBT: setServices → length invariant ─────────────────────────────────────
 
 describe('P-1: setServices preserva el tamaño de la lista (PBT)', () => {
-  it('P-1: la lista resultante siempre tiene el mismo tamaño que la entrada', () => {
+  it('P-1: la lista resultante siempre tiene el mismo tamaño que la entrada', async () => {
     fc.assert(
       fc.property(
         fc.array(
@@ -113,7 +113,7 @@ describe('P-1: setServices preserva el tamaño de la lista (PBT)', () => {
 // ─── PBT: updateService es idempotente ───────────────────────────────────────
 
 describe('P-2: updateService es idempotente (PBT)', () => {
-  it('P-2: aplicar el mismo update dos veces produce el mismo resultado', () => {
+  it('P-2: aplicar el mismo update dos veces produce el mismo resultado', async () => {
     fc.assert(
       fc.property(
         fc.constantFrom<ServiceStatus>('ASSIGNED', 'ACCEPTED', 'IN_TRANSIT', 'DELIVERED'),

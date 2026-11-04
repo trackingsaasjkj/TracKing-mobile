@@ -276,7 +276,7 @@ export function SettlementDetailModal({ settlement, visible, onClose }: Props) {
                 <Text style={[styles.listTitle, { color: colors.neutral900 }]}>
                   Pedidos en este período ({services.length})
                 </Text>
-              ) : null
+              ) : undefined
             }
             ListEmptyComponent={
               <View style={styles.center}>

@@ -53,26 +53,26 @@ describe('useActiveRouteSummary — sin ruta activa', () => {
     useRoutesStore.setState({ activeRoute: null, loaded: false });
   });
 
-  it('retorna null cuando no hay servicios ni ruta en store', () => {
-    const { result } = renderHook(() => useActiveRouteSummary());
+  it('retorna null cuando no hay servicios ni ruta en store', async () => {
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current).toBeNull();
   });
 
-  it('retorna null cuando los servicios no tienen routeStop', () => {
+  it('retorna null cuando los servicios no tienen routeStop', async () => {
     useServicesStore.getState().setServices([makeService('ASSIGNED', undefined)]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current).toBeNull();
   });
 
-  it('retorna null cuando los servicios con ruta están DELIVERED', () => {
+  it('retorna null cuando los servicios con ruta están DELIVERED', async () => {
     useServicesStore.getState().setServices([makeService('DELIVERED', 'route-x')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current).toBeNull();
   });
 
-  it('retorna null cuando los servicios con ruta están CANCELLED', () => {
+  it('retorna null cuando los servicios con ruta están CANCELLED', async () => {
     useServicesStore.getState().setServices([makeService('CANCELLED', 'route-x')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current).toBeNull();
   });
 });
@@ -85,33 +85,33 @@ describe('useActiveRouteSummary — detecta ruta desde servicios', () => {
     useRoutesStore.setState({ activeRoute: null, loaded: false });
   });
 
-  it('detecta ruta cuando hay un servicio ASSIGNED con routeStop', () => {
+  it('detecta ruta cuando hay un servicio ASSIGNED con routeStop', async () => {
     useServicesStore.getState().setServices([makeService('ASSIGNED', 'route-abc')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.routeId).toBe('route-abc');
   });
 
-  it('detecta ruta cuando hay un servicio ACCEPTED con routeStop', () => {
+  it('detecta ruta cuando hay un servicio ACCEPTED con routeStop', async () => {
     useServicesStore.getState().setServices([makeService('ACCEPTED', 'route-abc')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.routeId).toBe('route-abc');
   });
 
-  it('detecta ruta cuando hay un servicio IN_TRANSIT con routeStop', () => {
+  it('detecta ruta cuando hay un servicio IN_TRANSIT con routeStop', async () => {
     useServicesStore.getState().setServices([makeService('IN_TRANSIT', 'route-abc')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.routeId).toBe('route-abc');
   });
 
-  it('expone totalStops desde el routeStop del servicio', () => {
+  it('expone totalStops desde el routeStop del servicio', async () => {
     useServicesStore.getState().setServices([makeService('ASSIGNED', 'route-abc')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.totalStops).toBe(3);
   });
 
-  it('completedStops es 0 cuando se deriva desde servicios (ruta no cargada aún)', () => {
+  it('completedStops es 0 cuando se deriva desde servicios (ruta no cargada aún)', async () => {
     useServicesStore.getState().setServices([makeService('ASSIGNED', 'route-abc')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.completedStops).toBe(0);
   });
 });
@@ -124,22 +124,22 @@ describe('useActiveRouteSummary — prioriza routesStore', () => {
     useRoutesStore.setState({ activeRoute: null, loaded: false });
   });
 
-  it('usa routesStore cuando hay ruta cargada', () => {
+  it('usa routesStore cuando hay ruta cargada', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'route-from-store' }));
     useServicesStore.getState().setServices([makeService('ASSIGNED', 'route-from-services')]);
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.routeId).toBe('route-from-store');
   });
 
-  it('calcula completedStops correctamente desde el store', () => {
+  it('calcula completedStops correctamente desde el store', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute()); // 2 COMPLETED, 1 PENDING
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.completedStops).toBe(2);
   });
 
-  it('expone routeStatus del store', () => {
+  it('expone routeStatus del store', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ status: 'IN_PROGRESS' }));
-    const { result } = renderHook(() => useActiveRouteSummary());
+    const { result } = await renderHook(() => useActiveRouteSummary());
     expect(result.current?.routeStatus).toBe('IN_PROGRESS');
   });
 });
@@ -147,12 +147,12 @@ describe('useActiveRouteSummary — prioriza routesStore', () => {
 // ─── PBT: completedStops nunca supera totalStops ─────────────────────────────
 
 describe('P-1: completedStops nunca supera totalStops (PBT)', () => {
-  it('P-1: para cualquier combinación de paradas, completedStops ≤ totalStops', () => {
-    fc.assert(
-      fc.property(
+  it('P-1: para cualquier combinación de paradas, completedStops ≤ totalStops', async () => {
+    await fc.assert(
+      fc.asyncProperty(
         fc.integer({ min: 1, max: 8 }),
         fc.integer({ min: 0, max: 8 }),
-        (total, completedCount) => {
+        async (total, completedCount) => {
           const actualCompleted = Math.min(completedCount, total);
           const stops: RouteStop[] = Array.from({ length: total }, (_, i) => ({
             id: `s${i}`, sequence_order: i + 1, address: 'Dir',
@@ -168,7 +168,7 @@ describe('P-1: completedStops nunca supera totalStops (PBT)', () => {
             created_at: '2026-01-01T00:00:00Z', stops,
           });
 
-          const { result } = renderHook(() => useActiveRouteSummary());
+          const { result } = await renderHook(() => useActiveRouteSummary());
           const summary = result.current;
           expect(summary).not.toBeNull();
           expect(summary!.completedStops).toBeLessThanOrEqual(summary!.totalStops);

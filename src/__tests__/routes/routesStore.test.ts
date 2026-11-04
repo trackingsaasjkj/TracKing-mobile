@@ -43,20 +43,20 @@ describe('routesStore — setActiveRoute', () => {
     useRoutesStore.setState({ activeRoute: null, loaded: false });
   });
 
-  it('establece la ruta activa y loaded=true', () => {
+  it('establece la ruta activa y loaded=true', async () => {
     const route = makeRoute();
     useRoutesStore.getState().setActiveRoute(route);
     expect(useRoutesStore.getState().activeRoute).toEqual(route);
     expect(useRoutesStore.getState().loaded).toBe(true);
   });
 
-  it('permite sobreescribir la ruta activa', () => {
+  it('permite sobreescribir la ruta activa', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'r1' }));
     useRoutesStore.getState().setActiveRoute(makeRoute({ id: 'r2' }));
     expect(useRoutesStore.getState().activeRoute?.id).toBe('r2');
   });
 
-  it('acepta null para limpiar la ruta', () => {
+  it('acepta null para limpiar la ruta', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute());
     useRoutesStore.getState().setActiveRoute(null);
     expect(useRoutesStore.getState().activeRoute).toBeNull();
@@ -71,7 +71,7 @@ describe('routesStore — clearActiveRoute', () => {
     useRoutesStore.setState({ activeRoute: makeRoute(), loaded: true });
   });
 
-  it('limpia la ruta y resetea loaded', () => {
+  it('limpia la ruta y resetea loaded', async () => {
     useRoutesStore.getState().clearActiveRoute();
     expect(useRoutesStore.getState().activeRoute).toBeNull();
     expect(useRoutesStore.getState().loaded).toBe(false);
@@ -85,21 +85,21 @@ describe('routesStore — updateStop', () => {
     useRoutesStore.setState({ activeRoute: null, loaded: false });
   });
 
-  it('actualiza el estado de la parada correcta', () => {
+  it('actualiza el estado de la parada correcta', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute());
     useRoutesStore.getState().updateStop('stop-1', { status: 'COMPLETED' });
     const stop = useRoutesStore.getState().activeRoute?.stops.find((s) => s.id === 'stop-1');
     expect(stop?.status).toBe('COMPLETED');
   });
 
-  it('no modifica otras paradas', () => {
+  it('no modifica otras paradas', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute());
     useRoutesStore.getState().updateStop('stop-1', { status: 'COMPLETED' });
     const stop2 = useRoutesStore.getState().activeRoute?.stops.find((s) => s.id === 'stop-2');
     expect(stop2?.status).toBe('PENDING');
   });
 
-  it('actualiza completion_time junto con status', () => {
+  it('actualiza completion_time junto con status', async () => {
     const time = '2026-01-01T08:00:00Z';
     useRoutesStore.getState().setActiveRoute(makeRoute());
     useRoutesStore.getState().updateStop('stop-1', { status: 'COMPLETED', completion_time: time });
@@ -107,13 +107,13 @@ describe('routesStore — updateStop', () => {
     expect(stop?.completion_time).toBe(time);
   });
 
-  it('no lanza error si no hay ruta activa', () => {
+  it('no lanza error si no hay ruta activa', async () => {
     expect(() => {
       useRoutesStore.getState().updateStop('stop-1', { status: 'COMPLETED' });
     }).not.toThrow();
   });
 
-  it('ignora stopId desconocido sin modificar otras paradas', () => {
+  it('ignora stopId desconocido sin modificar otras paradas', async () => {
     useRoutesStore.getState().setActiveRoute(makeRoute());
     useRoutesStore.getState().updateStop('unknown-stop', { status: 'COMPLETED' });
     const stops = useRoutesStore.getState().activeRoute?.stops ?? [];
@@ -124,7 +124,7 @@ describe('routesStore — updateStop', () => {
 // ─── PBT: updateStop es idempotente ──────────────────────────────────────────
 
 describe('P-1: updateStop es idempotente (PBT)', () => {
-  it('P-1: aplicar el mismo update dos veces produce el mismo resultado', () => {
+  it('P-1: aplicar el mismo update dos veces produce el mismo resultado', async () => {
     fc.assert(
       fc.property(
         fc.constantFrom<RouteStopStatus>('PENDING', 'COMPLETED'),
@@ -146,7 +146,7 @@ describe('P-1: updateStop es idempotente (PBT)', () => {
 // ─── PBT: setActiveRoute preserva paradas ────────────────────────────────────
 
 describe('P-2: setActiveRoute preserva el número de paradas (PBT)', () => {
-  it('P-2: la ruta almacenada tiene exactamente las paradas que se pasaron', () => {
+  it('P-2: la ruta almacenada tiene exactamente las paradas que se pasaron', async () => {
     fc.assert(
       fc.property(
         fc.integer({ min: 1, max: 10 }),

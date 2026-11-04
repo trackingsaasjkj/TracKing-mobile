@@ -35,7 +35,7 @@ describe('authStore — estado inicial', () => {
     useAuthStore.setState({ user: null, accessToken: null, isAuthenticated: false });
   });
 
-  it('inicia sin autenticar', () => {
+  it('inicia sin autenticar', async () => {
     const { isAuthenticated, user, accessToken } = useAuthStore.getState();
     expect(isAuthenticated).toBe(false);
     expect(user).toBeNull();
@@ -102,7 +102,7 @@ describe('authStore — setOperationalStatus', () => {
     expect(useAuthStore.getState().user?.operationalStatus).toBe('IN_SERVICE');
   });
 
-  it('es no-op cuando user es null', () => {
+  it('es no-op cuando user es null', async () => {
     useAuthStore.getState().setOperationalStatus('AVAILABLE');
     expect(useAuthStore.getState().user).toBeNull();
   });

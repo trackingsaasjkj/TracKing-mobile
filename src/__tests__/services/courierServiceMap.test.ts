@@ -72,7 +72,7 @@ function navTargetFromStatus(
 // ─── Unit tests: shouldRenderMap ──────────────────────────────────────────────
 
 describe('shouldRenderMap', () => {
-  it('retorna true cuando ambos pares de coordenadas son válidos', () => {
+  it('retorna true cuando ambos pares de coordenadas son válidos', async () => {
     expect(shouldRenderMap({
       origin_lat: 4.71, origin_lng: -74.07,
       destination_lat: 4.72, destination_lng: -74.08,
@@ -80,7 +80,7 @@ describe('shouldRenderMap', () => {
     })).toBe(true);
   });
 
-  it('retorna false cuando origin_lat es null', () => {
+  it('retorna false cuando origin_lat es null', async () => {
     expect(shouldRenderMap({
       origin_lat: null, origin_lng: -74.07,
       destination_lat: 4.72, destination_lng: -74.08,
@@ -88,7 +88,7 @@ describe('shouldRenderMap', () => {
     })).toBe(false);
   });
 
-  it('retorna false cuando destination_lat es undefined', () => {
+  it('retorna false cuando destination_lat es undefined', async () => {
     expect(shouldRenderMap({
       origin_lat: 4.71, origin_lng: -74.07,
       destination_lat: undefined, destination_lng: -74.08,
@@ -96,7 +96,7 @@ describe('shouldRenderMap', () => {
     })).toBe(false);
   });
 
-  it('retorna false cuando todas las coordenadas son null', () => {
+  it('retorna false cuando todas las coordenadas son null', async () => {
     expect(shouldRenderMap({
       origin_lat: null, origin_lng: null,
       destination_lat: null, destination_lng: null,
@@ -108,7 +108,7 @@ describe('shouldRenderMap', () => {
 // ─── Unit tests: getPinAddress ────────────────────────────────────────────────
 
 describe('getPinAddress', () => {
-  it('retorna origin_address para el pin de recogida', () => {
+  it('retorna origin_address para el pin de recogida', async () => {
     const service = {
       origin_lat: 4.71, origin_lng: -74.07,
       destination_lat: 4.72, destination_lng: -74.08,
@@ -117,7 +117,7 @@ describe('getPinAddress', () => {
     expect(getPinAddress(service, 'origin')).toBe('Calle 10');
   });
 
-  it('retorna destination_address para el pin de entrega', () => {
+  it('retorna destination_address para el pin de entrega', async () => {
     const service = {
       origin_lat: 4.71, origin_lng: -74.07,
       destination_lat: 4.72, destination_lng: -74.08,
@@ -133,17 +133,17 @@ describe('resolveNavTarget — navigationTarget prop', () => {
   const oLat = 4.71, oLng = -74.07;
   const dLat = 4.72, dLng = -74.08;
 
-  it('pickup → retorna coordenadas de origen', () => {
+  it('pickup → retorna coordenadas de origen', async () => {
     const result = resolveNavTarget(oLat, oLng, dLat, dLng, 'pickup');
     expect(result).toEqual({ lat: oLat, lng: oLng });
   });
 
-  it('delivery → retorna coordenadas de destino', () => {
+  it('delivery → retorna coordenadas de destino', async () => {
     const result = resolveNavTarget(oLat, oLng, dLat, dLng, 'delivery');
     expect(result).toEqual({ lat: dLat, lng: dLng });
   });
 
-  it('pickup y delivery retornan coordenadas distintas cuando origen ≠ destino', () => {
+  it('pickup y delivery retornan coordenadas distintas cuando origen ≠ destino', async () => {
     const pickup = resolveNavTarget(oLat, oLng, dLat, dLng, 'pickup');
     const delivery = resolveNavTarget(oLat, oLng, dLat, dLng, 'delivery');
     expect(pickup).not.toEqual(delivery);
@@ -153,19 +153,19 @@ describe('resolveNavTarget — navigationTarget prop', () => {
 // ─── Unit tests: navTargetFromStatus ─────────────────────────────────────────
 
 describe('navTargetFromStatus — derivación desde estado del servicio', () => {
-  it('ASSIGNED → pickup (mensajero va a recoger)', () => {
+  it('ASSIGNED → pickup (mensajero va a recoger)', async () => {
     expect(navTargetFromStatus('ASSIGNED')).toBe('pickup');
   });
 
-  it('ACCEPTED → pickup (mensajero aceptó pero aún no inició ruta)', () => {
+  it('ACCEPTED → pickup (mensajero aceptó pero aún no inició ruta)', async () => {
     expect(navTargetFromStatus('ACCEPTED')).toBe('pickup');
   });
 
-  it('IN_TRANSIT → delivery (mensajero ya recogió, va a entregar)', () => {
+  it('IN_TRANSIT → delivery (mensajero ya recogió, va a entregar)', async () => {
     expect(navTargetFromStatus('IN_TRANSIT')).toBe('delivery');
   });
 
-  it('DELIVERED → pickup (servicio terminado, no hay navegación activa)', () => {
+  it('DELIVERED → pickup (servicio terminado, no hay navegación activa)', async () => {
     // DELIVERED no tiene botón de acción, pero la lógica retorna 'pickup' por defecto
     expect(navTargetFromStatus('DELIVERED')).toBe('pickup');
   });
@@ -177,25 +177,25 @@ describe('flujo de navegación: ASSIGNED → ACCEPTED → IN_TRANSIT', () => {
   const origin = { lat: 4.6097, lng: -74.0817, address: 'Calle 45 #12-30' };
   const destination = { lat: 4.6500, lng: -74.1000, address: 'Av. El Dorado #68-11' };
 
-  it('en ASSIGNED: Maps/Waze apuntan a la recogida', () => {
+  it('en ASSIGNED: Maps/Waze apuntan a la recogida', async () => {
     const target = navTargetFromStatus('ASSIGNED');
     const nav = resolveNavTarget(origin.lat, origin.lng, destination.lat, destination.lng, target);
     expect(nav).toEqual({ lat: origin.lat, lng: origin.lng });
   });
 
-  it('en ACCEPTED: Maps/Waze siguen apuntando a la recogida', () => {
+  it('en ACCEPTED: Maps/Waze siguen apuntando a la recogida', async () => {
     const target = navTargetFromStatus('ACCEPTED');
     const nav = resolveNavTarget(origin.lat, origin.lng, destination.lat, destination.lng, target);
     expect(nav).toEqual({ lat: origin.lat, lng: origin.lng });
   });
 
-  it('en IN_TRANSIT: Maps/Waze apuntan a la entrega', () => {
+  it('en IN_TRANSIT: Maps/Waze apuntan a la entrega', async () => {
     const target = navTargetFromStatus('IN_TRANSIT');
     const nav = resolveNavTarget(origin.lat, origin.lng, destination.lat, destination.lng, target);
     expect(nav).toEqual({ lat: destination.lat, lng: destination.lng });
   });
 
-  it('el cambio de ACCEPTED → IN_TRANSIT cambia el destino de navegación', () => {
+  it('el cambio de ACCEPTED → IN_TRANSIT cambia el destino de navegación', async () => {
     const beforeTransition = resolveNavTarget(
       origin.lat, origin.lng, destination.lat, destination.lng,
       navTargetFromStatus('ACCEPTED'),
@@ -219,7 +219,7 @@ describe('P-11: mapa se renderiza iff coordenadas no nulas (PBT)', () => {
    * tiene coordenadas no nulas para origen y destino.
    * Validates: Requirements 6.1, 6.2, 6.3
    */
-  it('P-11a: con coordenadas válidas, shouldRenderMap siempre retorna true', () => {
+  it('P-11a: con coordenadas válidas, shouldRenderMap siempre retorna true', async () => {
     fc.assert(
       fc.property(
         fc.float({ min: -90, max: 90, noNaN: true }),
@@ -239,7 +239,7 @@ describe('P-11: mapa se renderiza iff coordenadas no nulas (PBT)', () => {
     );
   });
 
-  it('P-11b: con alguna coordenada nula, shouldRenderMap siempre retorna false', () => {
+  it('P-11b: con alguna coordenada nula, shouldRenderMap siempre retorna false', async () => {
     fc.assert(
       fc.property(
         fc.oneof(
@@ -276,7 +276,7 @@ describe('P-12: tap en pin muestra la dirección correcta (PBT)', () => {
    * se muestra la dirección de destino.
    * Validates: Requirements 6.4
    */
-  it('P-12: getPinAddress retorna la dirección correcta para cada pin', () => {
+  it('P-12: getPinAddress retorna la dirección correcta para cada pin', async () => {
     fc.assert(
       fc.property(
         fc.string({ minLength: 1, maxLength: 100 }),
@@ -312,7 +312,7 @@ describe('P-13: navigationTarget resuelve coordenadas correctas (PBT)', () => {
    * - Los dos resultados son distintos cuando origen ≠ destino
    * Validates: Requirement 6.5
    */
-  it('P-13a: pickup siempre retorna coordenadas de origen', () => {
+  it('P-13a: pickup siempre retorna coordenadas de origen', async () => {
     fc.assert(
       fc.property(
         fc.float({ min: -90, max: 90, noNaN: true }),
@@ -329,7 +329,7 @@ describe('P-13: navigationTarget resuelve coordenadas correctas (PBT)', () => {
     );
   });
 
-  it('P-13b: delivery siempre retorna coordenadas de destino', () => {
+  it('P-13b: delivery siempre retorna coordenadas de destino', async () => {
     fc.assert(
       fc.property(
         fc.float({ min: -90, max: 90, noNaN: true }),
@@ -346,7 +346,7 @@ describe('P-13: navigationTarget resuelve coordenadas correctas (PBT)', () => {
     );
   });
 
-  it('P-13c: pickup y delivery retornan coords distintas cuando origen ≠ destino', () => {
+  it('P-13c: pickup y delivery retornan coords distintas cuando origen ≠ destino', async () => {
     fc.assert(
       fc.property(
         fc.float({ min: -90, max: 90, noNaN: true }),
@@ -376,7 +376,7 @@ describe('P-14: HTML del mapa es estable ante re-renders (CAMBIO-23)', () => {
    * si las coordenadas no cambian, el HTML no cambia.
    * Validates: Requirement 6.6 — sin reload del WebView al cambiar estado
    */
-  it('P-14a: mismas coordenadas → mismo HTML (determinismo)', () => {
+  it('P-14a: mismas coordenadas → mismo HTML (determinismo)', async () => {
     fc.assert(
       fc.property(
         fc.float({ min: -90, max: 90, noNaN: true }),
@@ -401,7 +401,7 @@ describe('P-14: HTML del mapa es estable ante re-renders (CAMBIO-23)', () => {
     );
   });
 
-  it('P-14b: cambio de navigationTarget NO cambia las coordenadas congeladas', () => {
+  it('P-14b: cambio de navigationTarget NO cambia las coordenadas congeladas', async () => {
     // Simula el escenario real: el estado cambia de ACCEPTED → IN_TRANSIT
     // Las coordenadas del servicio son las mismas, solo cambia navigationTarget
     const frozenOLat = 4.71, frozenOLng = -74.07;
@@ -414,7 +414,7 @@ describe('P-14: HTML del mapa es estable ante re-renders (CAMBIO-23)', () => {
     expect(htmlBeforeTransition).toBe(htmlAfterTransition);
   });
 
-  it('P-14c: navigationTarget solo afecta los botones de nav, no el HTML del mapa', () => {
+  it('P-14c: navigationTarget solo afecta los botones de nav, no el HTML del mapa', async () => {
     const oLat = 4.71, oLng = -74.07;
     const dLat = 4.72, dLng = -74.08;
 

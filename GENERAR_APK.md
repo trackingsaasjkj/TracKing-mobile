@@ -56,7 +56,7 @@ sdk.dir=C\:\\Users\\TuUsuario\\AppData\\Local\\Android\\Sdk
 
 ```bash
 cd android
-.\gradlew.bat assembleRelease
+.\gradlew.bat assembleRelease --console=plain
 ```
 
 > La compilación puede tardar varios minutos la primera vez.

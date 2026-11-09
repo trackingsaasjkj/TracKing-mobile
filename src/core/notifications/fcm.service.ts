@@ -1,26 +1,64 @@
-import Constants, { ExecutionEnvironment } from 'expo-constants';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import type { RemoteMessage } from '@react-native-firebase/messaging';
 import type { Service } from '@/features/services/types/services.types';
 
-// True when Firebase native modules are NOT available:
-// - Expo Go (storeClient execution environment)
-// - Web (react-native-firebase never works in a browser)
-const IS_EXPO_GO =
-  Constants.executionEnvironment === ExecutionEnvironment.StoreClient ||
-  Constants.appOwnership === 'expo' ||
-  Platform.OS === 'web';
-
 type MessagingModule = typeof import('@react-native-firebase/messaging');
+type MessagingInstance = ReturnType<MessagingModule['getMessaging']>;
 
-// ─── Lazy-load real Firebase only in native builds ────────────────────────────
-function getMessagingModule(): MessagingModule {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('@react-native-firebase/messaging') as MessagingModule;
+// Expo Go cannot load react-native-firebase native modules. `appOwnership` is
+// deprecated and `executionEnvironment` also reports StoreClient for dev
+// clients, so rely on expoGoConfig first and, as a final safety net, catch any
+// error thrown while loading the native module.
+function isExpoGo(): boolean {
+  return Constants.appOwnership === 'expo' || Constants.expoGoConfig != null;
 }
 
-function getMessagingInstance() {
-  return getMessagingModule().getMessaging();
+let messagingModule: MessagingModule | null | undefined;
+
+function loadMessagingModule(): MessagingModule | null {
+  if (messagingModule !== undefined) return messagingModule;
+
+  if (Platform.OS === 'web' || isExpoGo()) {
+    messagingModule = null;
+    console.log('[FCM] Push deshabilitado (Expo Go / web)');
+    return null;
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const module = require('@react-native-firebase/messaging') as
+      | MessagingModule
+      | undefined;
+    messagingModule =
+      module && typeof module.getMessaging === 'function' ? module : null;
+  } catch {
+    // Native module missing (e.g. Expo Go or a dev build without Firebase).
+    messagingModule = null;
+  }
+
+  if (!messagingModule) {
+    console.warn('[FCM] Push deshabilitado (módulo nativo no disponible)');
+  }
+
+  return messagingModule;
+}
+
+function getMessagingInstance(): MessagingInstance | null {
+  const messaging = loadMessagingModule();
+  if (!messaging) return null;
+
+  try {
+    return messaging.getMessaging();
+  } catch (error) {
+    console.warn('[FCM] No se pudo obtener la instancia de messaging:', error);
+    return null;
+  }
+}
+
+/** True when push notifications are available in the current build. */
+export function isFcmSupported(): boolean {
+  return loadMessagingModule() !== null;
 }
 
 /**
@@ -28,16 +66,17 @@ function getMessagingInstance() {
  * Retorna true si el permiso fue concedido.
  */
 export async function requestNotificationPermission(): Promise<boolean> {
-  if (IS_EXPO_GO) {
-    console.log('[FCM Mock] requestNotificationPermission → true');
-    return true;
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) {
+    console.log('[FCM Mock] requestNotificationPermission → false (push disabled)');
+    return false;
   }
   try {
-    const messagingModule = getMessagingModule();
-    const authStatus = await messagingModule.requestPermission(getMessagingInstance());
+    const authStatus = await messaging.requestPermission(instance);
     const granted =
-      authStatus === messagingModule.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messagingModule.AuthorizationStatus.PROVISIONAL;
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
     if (!granted) {
       console.warn('[FCM] Notification permission denied. Status:', authStatus);
     } else {
@@ -54,13 +93,14 @@ export async function requestNotificationPermission(): Promise<boolean> {
  * Obtiene el FCM token del dispositivo.
  */
 export async function getFCMToken(): Promise<string | null> {
-  if (IS_EXPO_GO) {
-    console.log('[FCM Mock] getFCMToken → null (Expo Go)');
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) {
+    console.log('[FCM Mock] getFCMToken → null (push disabled)');
     return null;
   }
   try {
-    const messagingModule = getMessagingModule();
-    const token = await messagingModule.getToken(getMessagingInstance());
+    const token = await messaging.getToken(instance);
     if (token) {
       console.log('[FCM] Token obtained successfully');
     } else {
@@ -77,9 +117,10 @@ export async function getFCMToken(): Promise<string | null> {
  * Escucha cuando el token FCM se refresca.
  */
 export function onTokenRefresh(callback: (token: string) => void): () => void {
-  if (IS_EXPO_GO) return () => {};
-  const messagingModule = getMessagingModule();
-  return messagingModule.onTokenRefresh(getMessagingInstance(), callback);
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) return () => {};
+  return messaging.onTokenRefresh(instance, callback);
 }
 
 /**
@@ -88,9 +129,10 @@ export function onTokenRefresh(callback: (token: string) => void): () => void {
 export function onForegroundMessage(
   callback: (message: RemoteMessage) => void,
 ): () => void {
-  if (IS_EXPO_GO) return () => {};
-  const messagingModule = getMessagingModule();
-  return messagingModule.onMessage(getMessagingInstance(), callback);
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) return () => {};
+  return messaging.onMessage(instance, callback);
 }
 
 /**
@@ -99,18 +141,20 @@ export function onForegroundMessage(
 export function onBackgroundNotificationOpened(
   callback: (message: RemoteMessage) => void,
 ): void {
-  if (IS_EXPO_GO) return;
-  const messagingModule = getMessagingModule();
-  messagingModule.onNotificationOpenedApp(getMessagingInstance(), callback);
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) return;
+  messaging.onNotificationOpenedApp(instance, callback);
 }
 
 /**
  * Verifica si la app fue abierta desde una notificación (app estaba cerrada).
  */
 export async function getInitialNotification(): Promise<RemoteMessage | null> {
-  if (IS_EXPO_GO) return null;
-  const messagingModule = getMessagingModule();
-  return messagingModule.getInitialNotification(getMessagingInstance());
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) return null;
+  return messaging.getInitialNotification(instance);
 }
 
 /**
@@ -118,18 +162,16 @@ export async function getInitialNotification(): Promise<RemoteMessage | null> {
  * DEBE registrarse fuera del árbol de React (en index.ts).
  */
 export function setBackgroundMessageHandler(): void {
-  if (IS_EXPO_GO) {
-    console.log('[FCM Mock] setBackgroundMessageHandler → no-op (Expo Go)');
+  const messaging = loadMessagingModule();
+  const instance = getMessagingInstance();
+  if (!messaging || !instance) {
+    console.log('[FCM Mock] setBackgroundMessageHandler → no-op (push disabled)');
     return;
   }
   try {
-    const messagingModule = getMessagingModule();
-    messagingModule.setBackgroundMessageHandler(
-      getMessagingInstance(),
-      async (remoteMessage) => {
-        console.log('[FCM] Background message received:', remoteMessage);
-      },
-    );
+    messaging.setBackgroundMessageHandler(instance, async (remoteMessage) => {
+      console.log('[FCM] Background message received:', remoteMessage);
+    });
     console.log('[FCM] Background message handler registered successfully');
   } catch (error) {
     console.error('[FCM] Error setting background message handler:', error);

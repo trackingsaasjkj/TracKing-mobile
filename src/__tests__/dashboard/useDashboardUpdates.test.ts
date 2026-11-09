@@ -47,7 +47,7 @@ describe('useDashboardUpdates', () => {
     const onRefresh = jest.fn();
     await renderHook(() => useDashboardUpdates(onRefresh));
 
-    act(() => {
+    await act(async () => {
       emitWs('service:assigned', { id: 'svc-new', status: 'ASSIGNED' });
     });
 
@@ -65,7 +65,7 @@ describe('useDashboardUpdates', () => {
     const onRefresh = jest.fn();
     await renderHook(() => useDashboardUpdates(onRefresh));
 
-    act(() => {
+    await act(async () => {
       emitWs('service:updated', { id: 'svc-1', status: 'ACCEPTED' });
     });
 
@@ -76,7 +76,7 @@ describe('useDashboardUpdates', () => {
     const onRefresh = jest.fn();
     await renderHook(() => useDashboardUpdates(onRefresh));
 
-    act(() => {
+    await act(async () => {
       emitWs('service:assigned', { id: 'svc-1' });
       emitWs('service:assigned', { id: 'svc-2' });
       emitWs('service:assigned', { id: 'svc-3' });
@@ -91,7 +91,7 @@ describe('useDashboardUpdates', () => {
 
     await unmount();
 
-    act(() => {
+    await act(async () => {
       emitWs('service:assigned', { id: 'svc-1' });
     });
 
@@ -105,7 +105,7 @@ describe('useDashboardUpdates', () => {
     const { rerender } = await renderHook(() => useDashboardUpdates(onRefresh));
     expect(wsClient.on).not.toHaveBeenCalled();
 
-    act(() => {
+    await act(async () => {
       useAuthStore.setState({ accessToken: 'new-token', isAuthenticated: true, user: null });
     });
     await rerender({});

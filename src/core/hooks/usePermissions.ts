@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { PermissionsAndroid, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { Camera } from 'expo-camera';
 
@@ -9,9 +10,16 @@ import { Camera } from 'expo-camera';
  * regardless of whether the user is authenticated.
  *
  * Order matters on Android:
- *   1. Foreground location  — must be granted before background
- *   2. Background location  — required for workday tracking task
- *   3. Camera               — required for delivery evidence photos
+ *   1. Foreground location  — needed by the foreground tracking service
+ *   2. Camera               — required for delivery evidence photos
+ *   3. Notifications        — Android 13+; makes the foreground service
+ *                             notification visible while tracking in background
+ *
+ * Background location is NOT requested here. The workday tracking uses an
+ * Android foreground service, which only needs the "while in use" permission.
+ * Requesting background permission at startup opens the Settings screen on
+ * Android 11+ and burns the one-time prompt. It is requested (best-effort)
+ * only when the courier starts a shift.
  *
  * The OS only shows the dialog once per permission. Subsequent calls
  * return the cached status without showing a dialog again, so calling
@@ -28,14 +36,23 @@ export function usePermissions() {
 
     async function requestAll() {
       try {
-        // 1. Foreground location (required before background on Android)
+        // 1. Foreground location (required by the foreground tracking service)
         await Location.requestForegroundPermissionsAsync();
 
-        // 2. Background location (ACCESS_BACKGROUND_LOCATION — needed for workday task)
-        await Location.requestBackgroundPermissionsAsync();
-
-        // 3. Camera (delivery evidence photos)
+        // 2. Camera (delivery evidence photos)
         await Camera.requestCameraPermissionsAsync();
+
+        // 3. Notifications (Android 13+) — required so the location foreground
+        // service notification is visible while tracking with the screen off.
+        if (
+          Platform.OS === 'android' &&
+          typeof Platform.Version === 'number' &&
+          Platform.Version >= 33
+        ) {
+          await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+          );
+        }
       } catch {
         // Permissions API unavailable (e.g. Expo Go simulator) — silently ignore
       }

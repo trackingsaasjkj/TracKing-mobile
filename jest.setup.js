@@ -13,9 +13,23 @@ jest.mock('expo-secure-store', () => ({
 
 // Mock expo-location (native module)
 jest.mock('expo-location', () => ({
-  requestForegroundPermissionsAsync: jest.fn(),
+  requestForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  requestBackgroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  getForegroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  getBackgroundPermissionsAsync: jest.fn(() => Promise.resolve({ status: 'granted' })),
+  hasServicesEnabledAsync: jest.fn(() => Promise.resolve(true)),
+  hasStartedLocationUpdatesAsync: jest.fn(() => Promise.resolve(false)),
+  startLocationUpdatesAsync: jest.fn(() => Promise.resolve()),
+  stopLocationUpdatesAsync: jest.fn(() => Promise.resolve()),
   getCurrentPositionAsync: jest.fn(),
-  Accuracy: { Balanced: 3 },
+  Accuracy: { Balanced: 3, High: 4 },
+}));
+
+// Mock expo-task-manager (native module)
+jest.mock('expo-task-manager', () => ({
+  defineTask: jest.fn(),
+  isTaskRegisteredAsync: jest.fn(() => Promise.resolve(false)),
+  unregisterTaskAsync: jest.fn(() => Promise.resolve()),
 }));
 
 // Mock expo-camera (native module)

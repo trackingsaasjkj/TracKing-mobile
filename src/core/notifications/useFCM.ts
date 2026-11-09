@@ -7,6 +7,7 @@ import {
   onForegroundMessage,
   onBackgroundNotificationOpened,
   getInitialNotification,
+  isFcmSupported,
 } from './fcm.service';
 import { apiClient } from '@/core/api/apiClient';
 
@@ -26,7 +27,7 @@ export function useFCM() {
   const tokenRegistered = useRef(false);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !isFcmSupported()) return;
 
     let unsubscribeTokenRefresh: (() => void) | undefined;
     let unsubscribeForeground: (() => void) | undefined;

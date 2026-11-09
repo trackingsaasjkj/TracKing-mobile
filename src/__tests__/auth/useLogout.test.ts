@@ -3,9 +3,11 @@
  * Cubre: flujo normal, eliminación de FCM token, manejo de errores
  */
 import { renderHook, act } from '@testing-library/react-native';
+import * as ExpoLocation from 'expo-location';
 import { useLogout } from '@/features/auth/hooks/useLogout';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { apiClient } from '@/core/api/apiClient';
+import { WORKDAY_BACKGROUND_TASK } from '@/features/tracking/tasks/workdayBackgroundTask';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -82,6 +84,17 @@ describe('useLogout — flujo normal', () => {
     expect(state.isAuthenticated).toBe(false);
     expect(state.user).toBeNull();
     expect(state.accessToken).toBeNull();
+  });
+
+  it('detiene el tracking de jornada antes de cerrar sesión', async () => {
+    (ExpoLocation.hasStartedLocationUpdatesAsync as jest.Mock).mockResolvedValue(true);
+    (ExpoLocation.stopLocationUpdatesAsync as jest.Mock).mockResolvedValue(undefined);
+
+    const { result } = await renderHook(() => useLogout());
+    await act(async () => { await result.current.logout(); });
+
+    expect(ExpoLocation.stopLocationUpdatesAsync).toHaveBeenCalledWith(WORKDAY_BACKGROUND_TASK);
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
   });
 
   it('isLoading es true durante el logout y false al terminar', async () => {

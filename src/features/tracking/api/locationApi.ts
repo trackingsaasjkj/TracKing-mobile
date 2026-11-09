@@ -1,9 +1,7 @@
-import axios from 'axios';
 import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
+import { API_BASE_URL, buildApiUrl } from '@/core/api/config';
 import { secureStorage } from '@/core/storage/secureStorage';
 import { useAuthStore } from '@/features/auth/store/authStore';
-
-const BASE_URL = (apiClient.defaults.baseURL as string) ?? '';
 
 export interface LocationPayload {
   latitude: number;
@@ -25,14 +23,14 @@ async function refreshTokenInBackground(): Promise<string | null> {
       return null;
     }
 
-    if (!BASE_URL) {
-      console.error('[LocationAPI] BASE_URL is not configured');
+    if (!API_BASE_URL) {
+      console.error('[LocationAPI] API_BASE_URL is not configured');
       return null;
     }
 
     console.log('[LocationAPI] Attempting to refresh token in background');
 
-    const response = await fetch(`${BASE_URL}/api/auth/refresh`, {
+    const response = await fetch(buildApiUrl('/api/auth/refresh'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -111,13 +109,13 @@ export const locationApi = {
       return;
     }
 
-    if (!BASE_URL) {
-      console.error('[LocationAPI] BASE_URL is not configured');
+    if (!API_BASE_URL) {
+      console.error('[LocationAPI] API_BASE_URL is not configured');
       return;
     }
 
     try {
-      const response = await fetch(`${BASE_URL}/api/courier/location`, {
+      const response = await fetch(buildApiUrl('/api/courier/location'), {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
@@ -135,7 +133,7 @@ export const locationApi = {
           if (newToken) {
             // Reintentar enviar la ubicación con el nuevo token
             console.log('[LocationAPI] Retrying location send with new token');
-            const retryResponse = await fetch(`${BASE_URL}/api/courier/location`, {
+            const retryResponse = await fetch(buildApiUrl('/api/courier/location'), {
               method: 'POST',
               headers: {
                 Authorization: `Bearer ${newToken}`,

@@ -10,13 +10,16 @@ import {
 } from 'react-native';
 import { useTheme } from '@/shared/ui/useTheme';
 import { fontSize, fontWeight } from '@/shared/ui/typography';
-import { spacing } from '@/shared/ui/spacing';
+import { borderRadius, spacing } from '@/shared/ui/spacing';
+import { shadows } from '@/shared/ui/shadows';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useWorkday } from '@/features/workday/hooks/useWorkday';
 import { useServicesStore } from '@/features/services/store/servicesStore';
 
 interface HeaderProps {
   name: string;
+  /** Renders the header as a floating card over the map */
+  floating?: boolean;
 }
 
 function getFormattedDate(): string {
@@ -30,7 +33,7 @@ const THUMB_SIZE = 18;
 const THUMB_PADDING = 2;
 const THUMB_TRAVEL = TOGGLE_WIDTH - THUMB_SIZE - THUMB_PADDING * 2;
 
-export function Header({ name }: HeaderProps) {
+export function Header({ name, floating = false }: HeaderProps) {
   const { colors } = useTheme();
   const user = useAuthStore((s) => s.user);
   const services = useServicesStore((s) => s.services);
@@ -96,9 +99,23 @@ export function Header({ name }: HeaderProps) {
   const isDisabled = loading;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.surface }]}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: floating ? colors.overlaySurface : colors.surface },
+        floating && [styles.floating, { shadowColor: colors.black }],
+      ]}
+    >
       <View style={styles.left}>
-        <Text style={[styles.greeting, { color: colors.neutral900 }]}>Hola, {name}</Text>
+        <Text
+          style={[
+            styles.greeting,
+            floating && styles.greetingFloating,
+            { color: colors.neutral900 },
+          ]}
+        >
+          Hola, {name}
+        </Text>
         <Text style={[styles.date, { color: colors.neutral500 }]}>Hoy, {getFormattedDate()}</Text>
       </View>
 
@@ -153,8 +170,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
+  floating: {
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.xl,
+    ...shadows.md,
+  },
   left: { flex: 1 },
   greeting: { fontSize: fontSize.xxl, fontWeight: fontWeight.extrabold },
+  greetingFloating: { fontSize: fontSize.lg },
   date: { fontSize: fontSize.sm, marginTop: 2 },
 
   trackBorder: {

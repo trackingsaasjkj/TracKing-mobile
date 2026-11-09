@@ -3,6 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react-native';
 import { useDashboard } from '@/features/dashboard/hooks/useDashboard';
 import { dashboardApi } from '@/features/dashboard/api/dashboardApi';
 import { earningsApi } from '@/features/earnings/api/earningsApi';
+import { routesApi } from '@/features/routes/api/routesApi';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useServicesStore } from '@/features/services/store/servicesStore';
 import type { Service, ServiceStatus } from '@/features/services/types/services.types';
@@ -27,6 +28,11 @@ jest.mock('@/features/earnings/api/earningsApi', () => ({
     getSummary: jest.fn(),
     getSettlements: jest.fn(),
     getSettlementById: jest.fn(),
+  },
+}));
+jest.mock('@/features/routes/api/routesApi', () => ({
+  routesApi: {
+    getActiveRoute: jest.fn(),
   },
 }));
 jest.mock('@/core/storage/secureStorage', () => ({
@@ -71,6 +77,7 @@ function setupMocks(
 ) {
   (dashboardApi.getProfile as jest.Mock).mockResolvedValue(makeProfile(operational_status));
   (dashboardApi.getAssignedServices as jest.Mock).mockResolvedValue(services);
+  (routesApi.getActiveRoute as jest.Mock).mockResolvedValue(null);
   (earningsApi.getSummary as jest.Mock).mockResolvedValue({ courier_payment: 0, total_settlements: 0, total_services: 0, settlements: [] });
 }
 

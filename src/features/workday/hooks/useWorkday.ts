@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { useServicesStore } from '@/features/services/store/servicesStore';
 import { useWorkdayTracking } from '@/features/tracking/hooks/useWorkdayTracking';
@@ -27,17 +27,56 @@ function hasActiveServices(): boolean {
 export function useWorkday(): UseWorkdayReturn {
   const [loading, setLoading] = useState(false);
   const setOperationalStatus = useAuthStore((s) => s.setOperationalStatus);
-  const { stopWorkdayTracking } = useWorkdayTracking();
+  const { startWorkdayTracking, stopWorkdayTracking } = useWorkdayTracking();
 
   const startWorkday = useCallback(async (): Promise<WorkdayResult> => {
     setLoading(true);
     try {
       await workdayApi.start();
       setOperationalStatus('AVAILABLE');
-      
-      // Background location tracking is NOT started here.
-      // It will be started when the courier accepts a service (IN_SERVICE state).
-      // See useServices.ts performAction() for tracking lifecycle.
+
+      // Start background location for the entire workday so the courier keeps
+      // reporting even when the screen is off, the phone is locked or the app
+      // is in the background.
+      // Interactive: this is the only place where the app may show OS
+      // permission prompts. Background permission is best-effort and never
+      // rolls back the workday (the Android foreground service only needs
+      // "while in use" permission).
+      const trackingResult = await startWorkdayTracking({ interactive: true });
+      if (!trackingResult.success) {
+        console.warn('[useWorkday] Background tracking failed:', trackingResult.reason);
+
+        // Workday started on the server but tracking cannot start at all
+        // (location services off or foreground permission denied). Roll back
+        // to keep the client/server state consistent.
+        try {
+          await workdayApi.end();
+        } catch {
+          // best-effort rollback
+        }
+        setOperationalStatus('UNAVAILABLE');
+
+        const reason = trackingResult.reason ?? 'No se pudo iniciar el rastreo de ubicación.';
+        Alert.alert(
+          'Ubicación requerida',
+          `Para iniciar la jornada necesitas activar la ubicación y permitir el acceso "Mientras usas la app".
+
+${reason}
+
+Si el problema continúa, revisa: Configuración → Apps → TracKing app → Permisos → Ubicación.
+También desactiva la optimización de batería para TracKing en Configuración → Batería.`,
+          [
+            { text: 'Entendido', style: 'default' },
+            { text: 'Abrir ajustes', onPress: () => { void Linking.openSettings(); } },
+          ],
+        );
+
+        return { ok: false, error: trackingResult.reason ?? 'Ubicación requerida para iniciar la jornada.' };
+      }
+
+      if (trackingResult.warning) {
+        console.warn('[useWorkday] Tracking warning:', trackingResult.warning);
+      }
 
       return { ok: true };
     } catch (err: any) {
@@ -45,7 +84,7 @@ export function useWorkday(): UseWorkdayReturn {
     } finally {
       setLoading(false);
     }
-  }, [setOperationalStatus]);
+  }, [setOperationalStatus, startWorkdayTracking]);
 
   const endWorkday = useCallback(async (): Promise<WorkdayResult> => {
     // Client-side guard — backend also enforces this

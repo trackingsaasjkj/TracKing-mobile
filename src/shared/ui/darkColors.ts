@@ -42,6 +42,15 @@ export const darkColors = {
   background:   '#0A0F1E',
   surface:      '#111827',
   surfaceRaised: '#1A2235',
+
+  // Map & floating overlays
+  mapCourier:   '#60A5FA',
+  mapPickup:    '#22C55E',
+  mapDelivery:  '#F87171',
+  mapRoute:     '#60A5FA',
+  overlaySurface: 'rgba(17, 24, 39, 0.94)',
+  overlayScrim: 'rgba(0, 0, 0, 0.45)',
+  sheetHandle:  '#475569',
 } as const;
 
 export type DarkColorKey = keyof typeof darkColors;

@@ -4,6 +4,7 @@
  */
 import * as messaging from '@react-native-firebase/messaging';
 import {
+  isFcmSupported,
   requestNotificationPermission,
   getFCMToken,
   onTokenRefresh,
@@ -12,6 +13,11 @@ import {
   getInitialNotification,
   setBackgroundMessageHandler,
 } from '@/core/notifications/fcm.service';
+
+jest.mock('expo-constants', () => ({
+  __esModule: true,
+  default: { appOwnership: null, expoGoConfig: null },
+}));
 
 const mockGetMessaging = messaging.getMessaging as jest.Mock;
 const mockRequestPermission = messaging.requestPermission as jest.Mock;
@@ -162,3 +168,11 @@ describe('setBackgroundMessageHandler', () => {
     expect(result).toBeInstanceOf(Promise);
   });
 });
+
+describe('isFcmSupported', () => {
+  it('retorna true cuando el módulo nativo carga correctamente', () => {
+    expect(isFcmSupported()).toBe(true);
+  });
+});
+
+

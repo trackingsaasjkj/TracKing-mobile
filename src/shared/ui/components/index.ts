@@ -3,3 +3,4 @@ export { Input } from './Input';
 export { StatusBadge } from './StatusBadge';
 export type { BadgeVariant } from './StatusBadge';
 export { Card } from './Card';
+export { BottomSheet } from './BottomSheet';

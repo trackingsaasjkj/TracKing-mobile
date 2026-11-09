@@ -42,6 +42,15 @@ export const colors = {
   background: '#F9FAFB',    // frontend body bg (neutral-50)
   surface: '#FFFFFF',
   surfaceRaised: '#FFFFFF',
+
+  // Map & floating overlays
+  mapCourier: '#1D4ED8',
+  mapPickup: '#22C55E',
+  mapDelivery: '#E53E3E',
+  mapRoute: '#1D4ED8',
+  overlaySurface: 'rgba(255, 255, 255, 0.94)',
+  overlayScrim: 'rgba(15, 23, 42, 0.28)',
+  sheetHandle: '#CBD5E1',
 } as const;
 
 export type ColorKey = keyof typeof colors;

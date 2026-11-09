@@ -13,6 +13,7 @@ import { spacing, borderRadius } from '@/shared/ui/spacing';
 import { StatusBadge } from '../components/StatusBadge';
 import { useServiceDetail, canTransition, nextStatus } from '../hooks/useServices';
 import { useTrackingCoords } from '@/features/tracking/hooks/useLocation';
+import { toFiniteCoord } from '@/shared/utils/coordinates';
 import { EvidenceCapture } from '@/features/evidence/components/EvidenceCapture';
 import { CourierServiceMap } from '../components/CourierServiceMap';
 import { ContactsMenu } from '../components/ContactsMenu';
@@ -78,6 +79,16 @@ export function ServiceDetailScreen() {
     );
   }
 
+  const originLat = toFiniteCoord(service.origin_lat);
+  const originLng = toFiniteCoord(service.origin_lng);
+  const destinationLat = toFiniteCoord(service.destination_lat);
+  const destinationLng = toFiniteCoord(service.destination_lng);
+  const hasMapCoords =
+    originLat != null &&
+    originLng != null &&
+    destinationLat != null &&
+    destinationLng != null;
+
   const next = nextStatus(service.status);
   const canAct = canTransition(service.status);
   const isLoading = actionLoading === service.id;
@@ -115,20 +126,20 @@ export function ServiceDetailScreen() {
           <StatusBadge status={service.status} />
         </View>
 
-        {/* Map — shown when service has geocoded coordinates */}
-        {service.origin_lat != null && service.destination_lat != null && (
+        {/* Map — shown when the service has all four geocoded coordinates */}
+        {hasMapCoords ? (
           <CourierServiceMap
-            originLat={Number(service.origin_lat)}
-            originLng={Number(service.origin_lng!)}
+            originLat={originLat}
+            originLng={originLng}
             originAddress={service.origin_address}
-            destinationLat={Number(service.destination_lat)}
-            destinationLng={Number(service.destination_lng!)}
+            destinationLat={destinationLat}
+            destinationLng={destinationLng}
             destinationAddress={service.destination_address}
             courierLat={latitude}
             courierLng={longitude}
             navigationTarget={service.status === 'IN_TRANSIT' ? 'delivery' : 'pickup'}
           />
-        )}
+        ) : null}
 
         {/* Recogida (Origen) */}
         <View style={[styles.section, { backgroundColor: colors.surface }]}>

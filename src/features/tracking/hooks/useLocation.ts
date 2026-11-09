@@ -6,8 +6,19 @@ import { useTrackingStore } from '../store/trackingStore';
 const INTERVAL_MS = 15_000;
 
 interface UseLocationOptions {
-  /** Tracking only runs when this is true (operationalStatus === IN_SERVICE) */
+  /**
+   * When true the 15s foreground loop runs and writes coordinates to the
+   * shared store. Use this for the whole workday (AVAILABLE or IN_SERVICE)
+   * so the Home map always knows where the courier is.
+   */
   active: boolean;
+  /**
+   * When true (default) each reading is also POSTed to the backend.
+   * Set to false while AVAILABLE — the backend only accepts positions during
+   * IN_SERVICE, but the local map still needs the coordinates.
+   * Defaults to `active` for backwards compatibility.
+   */
+  reportToBackend?: boolean;
 }
 
 export interface LocationState {
@@ -33,6 +44,11 @@ export interface LocationState {
  *   active=true  → request foreground permission → start 15s interval
  *   active=false → clear interval → clear coords from store
  *
+ * `reportToBackend` decouples "show me on the map" from "send to backend":
+ *   - IN_SERVICE → active=true,  reportToBackend=true  (GPS + POST)
+ *   - AVAILABLE  → active=true,  reportToBackend=false (GPS only, map ready)
+ *   - UNAVAILABLE→ active=false                        (no GPS loop)
+ *
  * Coords are written to useTrackingStore so any screen can read them
  * without calling this hook a second time.
  *
@@ -40,7 +56,10 @@ export interface LocationState {
  *   - Backend 400 → stop tracking (courier left IN_SERVICE state)
  *   - Network / GPS errors → swallowed silently (must not interrupt courier flow)
  */
-export function useLocation({ active }: UseLocationOptions): LocationState {
+export function useLocation({
+  active,
+  reportToBackend = active,
+}: UseLocationOptions): LocationState {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const foregroundGranted = useRef(false);
   const stoppedByBackend = useRef(false);
@@ -74,8 +93,6 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
   // ── Send location (foreground) ────────────────────────────────────────────
 
   const sendLocation = useCallback(async () => {
-    if (stoppedByBackend.current) return;
-
     try {
       const granted = await requestForegroundPermission();
       if (!granted) return;
@@ -84,8 +101,14 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
         accuracy: ExpoLocation.Accuracy.Balanced,
       });
 
-      // Write to shared store — HomeScreen and ServiceDetailScreen both read from there
+      // Write to shared store — HomeScreen and ServiceDetailScreen both read from there.
+      // This happens even when we are not reporting to the backend so the map
+      // always reflects the courier's real position.
       setCoords(loc.coords.latitude, loc.coords.longitude);
+
+      // In AVAILABLE (watch-only) mode we only need the local coordinates.
+      // After a backend 400 we also keep updating the map without retrying send.
+      if (!reportToBackend || stoppedByBackend.current) return;
 
       await locationApi.send({
         latitude: loc.coords.latitude,
@@ -95,13 +118,13 @@ export function useLocation({ active }: UseLocationOptions): LocationState {
       });
     } catch (err: any) {
       if (err?.response?.status === 400) {
-        // Backend says courier is not IN_SERVICE — stop foreground tracking
+        // Backend says courier is not IN_SERVICE — stop reporting but keep
+        // the local map updated with the 15s foreground loop.
         stoppedByBackend.current = true;
-        stopForeground();
       }
       // All other errors (network, GPS) are swallowed silently
     }
-  }, [requestForegroundPermission, setCoords, stopForeground]);
+  }, [requestForegroundPermission, setCoords, reportToBackend]);
 
   // ── Effect: start/stop based on active flag ───────────────────────────────
 

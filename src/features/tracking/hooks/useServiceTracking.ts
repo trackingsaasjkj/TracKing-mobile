@@ -1,75 +1,101 @@
 import { useEffect, useRef } from 'react';
-import { useServicesStore } from '@/features/services/store/servicesStore';
-import { useWorkdayTracking } from './useWorkdayTracking';
+import { AppState } from 'react-native';
+import * as ExpoLocation from 'expo-location';
 import { useAuthStore } from '@/features/auth/store/authStore';
+import { secureStorage } from '@/core/storage/secureStorage';
+import { WORKDAY_BACKGROUND_TASK } from '../tasks/workdayBackgroundTask';
+import { useWorkdayTracking } from './useWorkdayTracking';
 
 /**
- * Monitors service status changes and manages background location tracking.
+ * Watchdog that keeps the workday background location task alive.
  *
- * Lifecycle:
- *   - When ANY service transitions to IN_TRANSIT → start background tracking
- *   - When ALL services are completed/cancelled → stop background tracking
+ * The task must run for the entire shift (AVAILABLE or IN_SERVICE). It is
+ * started by useWorkday on shift start, but the OS or the user can kill it:
+ *   - OEM battery optimizations
+ *   - Process death / app swipe
+ *   - A failed initial start (e.g. permission granted after the fact)
  *
- * This ensures location is only tracked while the courier is actively
- * delivering a service, not during idle time between services.
+ * This hook re-checks the native task state:
+ *   - When the workday starts (AVAILABLE / IN_SERVICE)
+ *   - Whenever the app returns to the foreground (AppState === 'active')
  *
- * Mount this hook in a top-level component (e.g., RootNavigator or AppProviders)
- * so it runs throughout the entire app session.
+ * It never stops tracking just because there are no active services or the
+ * status is UNAVAILABLE — that would break tracking during idle time between
+ * deliveries or after a transient dashboard refresh. Tracking is stopped only
+ * by an explicit shift end (useWorkday), logout, or an authoritative
+ * UNAVAILABLE profile during session restore.
  */
 export function useServiceTracking(): void {
-  const services = useServicesStore((s) => s.services);
   const operationalStatus = useAuthStore((s) => s.user?.operationalStatus);
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const { startWorkdayTracking, stopWorkdayTracking } = useWorkdayTracking();
-  
-  const trackingActiveRef = useRef(false);
+  const syncingRef = useRef(false);
 
   useEffect(() => {
-    // Only track if courier is in an active workday (AVAILABLE or IN_SERVICE)
-    if (operationalStatus !== 'AVAILABLE' && operationalStatus !== 'IN_SERVICE') {
-      // Workday ended — stop tracking if it was running
-      if (trackingActiveRef.current) {
-        console.log('[ServiceTracking] Workday ended, stopping tracking');
-        stopWorkdayTracking().catch((err) => {
-          console.error('[ServiceTracking] Error stopping tracking:', err);
-        });
-        trackingActiveRef.current = false;
-      }
-      return;
-    }
+    let mounted = true;
 
-    // Check if there are any active services (ASSIGNED, ACCEPTED, or IN_TRANSIT)
-    const hasActiveServices = services.some(
-      (s) => s.status === 'ASSIGNED' || s.status === 'ACCEPTED' || s.status === 'IN_TRANSIT',
-    );
+    const syncTracking = async () => {
+      if (syncingRef.current) return;
+      syncingRef.current = true;
 
-    // If there are active services and tracking is not running → start it
-    if (hasActiveServices && !trackingActiveRef.current) {
-      console.log('[ServiceTracking] Active services detected, starting tracking');
-      startWorkdayTracking()
-        .then((result) => {
-          if (result.success) {
-            trackingActiveRef.current = true;
-            console.log('[ServiceTracking] Tracking started successfully');
-          } else {
-            console.warn('[ServiceTracking] Failed to start tracking:', result.reason);
+      try {
+        const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
+          WORKDAY_BACKGROUND_TASK,
+        ).catch(() => false);
+        if (!mounted) return;
+
+        const workdayActive =
+          isAuthenticated &&
+          (operationalStatus === 'AVAILABLE' || operationalStatus === 'IN_SERVICE');
+
+        if (workdayActive) {
+          if (!isRunning) {
+            console.log('[ServiceTracking] Workday active but task is not running, starting');
+            const result = await startWorkdayTracking({ interactive: false });
+            if (!mounted) return;
+            if (!result.success) {
+              console.warn('[ServiceTracking] Failed to (re)start tracking:', result.reason);
+            }
           }
-        })
-        .catch((err) => {
-          console.error('[ServiceTracking] Error starting tracking:', err);
-        });
+          return;
+        }
+
+        if (!isRunning) return;
+
+        // Do not stop the task while the session is still being restored:
+        // at cold start isAuthenticated is false until SecureStore + /me finish.
+        const token = accessToken ?? (await secureStorage.getAccessToken());
+        if (!mounted) return;
+
+        // A transient UNAVAILABLE from a dashboard refresh must not stop the
+        // foreground service. Only a fully cleared session (logout / expired
+        // tokens) stops it here; explicit shift end is handled by useWorkday.
+        if (!isAuthenticated && !token) {
+          console.log('[ServiceTracking] Session cleared, stopping tracking');
+          await stopWorkdayTracking();
+        }
+      } catch (err) {
+        console.error('[ServiceTracking] Error syncing tracking state:', err);
+      } finally {
+        syncingRef.current = false;
+      }
+    };
+
+    if (mounted) {
+      void syncTracking();
     }
 
-    // If there are no active services and tracking is running → stop it
-    if (!hasActiveServices && trackingActiveRef.current) {
-      console.log('[ServiceTracking] No active services, stopping tracking');
-      stopWorkdayTracking()
-        .then(() => {
-          trackingActiveRef.current = false;
-          console.log('[ServiceTracking] Tracking stopped successfully');
-        })
-        .catch((err) => {
-          console.error('[ServiceTracking] Error stopping tracking:', err);
-        });
-    }
-  }, [services, operationalStatus, startWorkdayTracking, stopWorkdayTracking]);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active' && mounted) {
+        void syncTracking();
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.remove();
+    };
+  }, [accessToken, isAuthenticated, operationalStatus, startWorkdayTracking, stopWorkdayTracking]);
+
 }

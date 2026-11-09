@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import { handleApiError } from '@/shared/utils/errorHandler';
-import { API_BASE_URL } from './config';
+import { API_BASE_URL, buildApiUrl } from './config';
 
 const BASE_URL = API_BASE_URL;
 
@@ -29,6 +29,7 @@ function getAuthStore() {
   const secureStorageModule = require('@/core/storage/secureStorage');
   return {
     ...authStoreModule.useAuthStore.getState(),
+    useAuthStore: authStoreModule.useAuthStore,
     secureStorage: secureStorageModule.secureStorage,
   };
 }
@@ -162,7 +163,7 @@ apiClient.interceptors.response.use(
         // Enviar el refresh token en el body (más seguro que en el header)
         console.log('[Refresh] Sending refresh request with refreshToken in body');
         const response = await axios.post<ApiResponse<{ accessToken: string; refreshToken: string }>>(
-          `${BASE_URL}/api/auth/refresh`,
+          buildApiUrl('/api/auth/refresh'),
           { refreshToken },
           {
             withCredentials: true,
@@ -191,24 +192,38 @@ apiClient.interceptors.response.use(
             // Esto asegura que los tokens se guarden en secure storage antes de continuar
             await authStore.setSession(authStore.user, newAccessToken, newRefreshToken);
             console.log('[Refresh] Token updated successfully in store and secure storage');
+          } else {
+            // Session restore may still be running (user is null) but the tokens
+            // are already persisted by the refresh endpoint. Keep them in memory
+            // so the retried request uses the fresh access token.
+            authStore.useAuthStore.setState({
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken,
+            });
+            console.log('[Refresh] Tokens updated in memory (user not restored yet)');
           }
         } else {
           throw new Error('Refresh token response missing accessToken or refreshToken');
         }
         
-        // Re-read current token from store en memoria (ahora es el nuevo token)
-        const currentToken = getAuthStore().accessToken ?? '';
+        // Use the token from this refresh directly; re-reading from the store can
+        // return the old token when the session was not restored yet.
+        const currentToken = newAccessToken;
         console.log('[Refresh] Processing queue with new token');
         processQueue(null, currentToken);
 
-        if (originalRequest.headers && currentToken) {
+        if (originalRequest.headers) {
           originalRequest.headers.Authorization = `Bearer ${currentToken}`;
         }
         return apiClient(originalRequest);
       } catch (refreshError) {
         console.error('[Refresh] Failed to refresh token:', refreshError);
         processQueue(refreshError, null);
-        await getAuthStore().clearSession();
+        // Do not destroy a valid local session on transient network/server errors.
+        const refreshStatus = (refreshError as AxiosError)?.response?.status;
+        if (refreshStatus === 401 || refreshStatus === 403) {
+          await getAuthStore().clearSession();
+        }
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

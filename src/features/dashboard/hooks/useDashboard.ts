@@ -46,7 +46,16 @@ export function useDashboard(): DashboardState {
           routesApi.getActiveRoute(),
         ]);
 
-        setOperationalStatus(profile.operational_status);
+        // A transient UNAVAILABLE from the backend must not switch an active
+        // workday off in the UI (and previously it stopped tracking). An
+        // explicit shift end/logout updates the local state directly.
+        const localStatus = useAuthStore.getState().user?.operationalStatus;
+        const isTransientUnavailable =
+          profile.operational_status === 'UNAVAILABLE' &&
+          (localStatus === 'AVAILABLE' || localStatus === 'IN_SERVICE');
+        if (!isTransientUnavailable) {
+          setOperationalStatus(profile.operational_status);
+        }
         setServices(svcs);
 
         // Sync route store with the latest data from backend.

@@ -1,4 +1,6 @@
 import * as fc from 'fast-check';
+import { Alert } from 'react-native';
+import * as ExpoLocation from 'expo-location';
 import { renderHook, act } from '@testing-library/react-native';
 import { useWorkday } from '@/features/workday/hooks/useWorkday';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -11,6 +13,17 @@ jest.mock('@/features/workday/api/workdayApi');
 jest.mock('@/core/storage/secureStorage', () => ({
   secureStorage: { setToken: jest.fn(), clearToken: jest.fn(), getToken: jest.fn() },
 }));
+
+beforeEach(() => {
+  (ExpoLocation.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({
+    status: 'granted',
+  });
+  (ExpoLocation.requestBackgroundPermissionsAsync as jest.Mock).mockResolvedValue({
+    status: 'granted',
+  });
+  (ExpoLocation.hasStartedLocationUpdatesAsync as jest.Mock).mockResolvedValue(false);
+  (ExpoLocation.startLocationUpdatesAsync as jest.Mock).mockResolvedValue(undefined);
+});
 
 // ─── Factories ────────────────────────────────────────────────────────────────
 
@@ -54,6 +67,50 @@ describe('useWorkday — startWorkday', () => {
     await act(async () => { res = await result.current.startWorkday(); });
     expect(res.ok).toBe(true);
     expect(useAuthStore.getState().user?.operationalStatus).toBe('AVAILABLE');
+  });
+
+  it('inicia el tracking en background al iniciar jornada', async () => {
+    (workdayApi.start as jest.Mock).mockResolvedValue(undefined);
+    const { result } = await renderHook(() => useWorkday());
+    await act(async () => { await result.current.startWorkday(); });
+    expect(ExpoLocation.startLocationUpdatesAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it('hace rollback y alerta cuando el permiso de primer plano es denegado', async () => {
+    (workdayApi.start as jest.Mock).mockResolvedValue(undefined);
+    (workdayApi.end as jest.Mock).mockResolvedValue(undefined);
+    (ExpoLocation.requestForegroundPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: 'denied',
+    });
+    const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+
+    const { result } = await renderHook(() => useWorkday());
+    let res: any;
+    await act(async () => { res = await result.current.startWorkday(); });
+
+    expect(res.ok).toBe(false);
+    expect(workdayApi.end).toHaveBeenCalledTimes(1);
+    expect(useAuthStore.getState().user?.operationalStatus).toBe('UNAVAILABLE');
+    expect(alertSpy).toHaveBeenCalled();
+    expect(ExpoLocation.startLocationUpdatesAsync).not.toHaveBeenCalled();
+
+    alertSpy.mockRestore();
+  });
+
+  it('inicia el tracking aunque el permiso de background esté denegado', async () => {
+    (workdayApi.start as jest.Mock).mockResolvedValue(undefined);
+    (ExpoLocation.requestBackgroundPermissionsAsync as jest.Mock).mockResolvedValue({
+      status: 'denied',
+    });
+
+    const { result } = await renderHook(() => useWorkday());
+    let res: any;
+    await act(async () => { res = await result.current.startWorkday(); });
+
+    expect(res.ok).toBe(true);
+    expect(workdayApi.end).not.toHaveBeenCalled();
+    expect(useAuthStore.getState().user?.operationalStatus).toBe('AVAILABLE');
+    expect(ExpoLocation.startLocationUpdatesAsync).toHaveBeenCalledTimes(1);
   });
 
   it('retorna ok:false con error cuando la API falla', async () => {

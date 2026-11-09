@@ -3,9 +3,10 @@ import { secureStorage } from '@/core/storage/secureStorage';
 import { useAuthStore } from '@/features/auth/store/authStore';
 import { apiClient, unwrap, type ApiResponse } from '@/core/api/apiClient';
 import type { CourierUser } from '@/features/auth/types/auth.types';
-import * as ExpoLocation from 'expo-location';
-import { WORKDAY_BACKGROUND_TASK } from '@/features/tracking/tasks/workdayBackgroundTask';
-import { colors } from '@/shared/ui/colors';
+import {
+  startWorkdayLocationUpdates,
+  stopWorkdayLocationUpdates,
+} from '@/features/tracking/hooks/useWorkdayTracking';
 
 const RESTORE_TIMEOUT_MS = 8_000; // safety net: never block the app more than 8s
 
@@ -22,47 +23,31 @@ interface CourierMeResponse {
 }
 
 /**
- * Restarts the workday background location task if the courier is already
- * IN_SERVICE when the app launches (e.g. after a force-close).
- * The task may have been killed by the OS — this ensures it's always running
- * during an active service delivery.
+ * Restarts the workday background location task if the courier has an active
+ * workday (AVAILABLE or IN_SERVICE) when the app launches (e.g. after a
+ * force-close). The task may have been killed by the OS — this ensures it's
+ * always running for the entire shift.
  *
- * Note: If the courier is AVAILABLE (no active services), tracking is NOT
- * restarted. It will be started automatically by useServiceTracking when
- * the courier accepts a service.
+ * Tracking starts on shift start and must survive screen-off, lock and app
+ * background/close, so it cannot depend on the services store being populated.
  */
 async function restoreWorkdayTracking(): Promise<void> {
   try {
-    const { status: fgStatus } = await ExpoLocation.getForegroundPermissionsAsync();
-    if (fgStatus !== 'granted') return;
-
-    const { status: bgStatus } = await ExpoLocation.getBackgroundPermissionsAsync();
-    if (bgStatus !== 'granted') return;
-
-    const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
-      WORKDAY_BACKGROUND_TASK,
-    ).catch(() => false);
-    if (isRunning) return; // already running — nothing to do
-
-    // Only restore tracking if courier is IN_SERVICE (actively delivering)
-    // If AVAILABLE, useServiceTracking will start it when a service is accepted
+    // Restore tracking for the whole active workday, not just IN_SERVICE.
+    // If the courier is UNAVAILABLE, there is no shift to track.
     const state = useAuthStore.getState();
-    if (state.user?.operationalStatus !== 'IN_SERVICE') {
-      console.log('[SessionRestore] Courier not IN_SERVICE, skipping tracking restore');
+    const operationalStatus = state.user?.operationalStatus;
+    if (operationalStatus !== 'AVAILABLE' && operationalStatus !== 'IN_SERVICE') {
+      console.log('[SessionRestore] No active workday, skipping tracking restore');
       return;
     }
 
-    await ExpoLocation.startLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK, {
-      accuracy: ExpoLocation.Accuracy.Balanced,
-      timeInterval: 15_000,
-      distanceInterval: 0,    // no distance threshold — rely only on timeInterval
-      showsBackgroundLocationIndicator: true,
-      foregroundService: {
-        notificationTitle: 'Jornada activa',
-        notificationBody: 'Tu ubicación se comparte mientras estás en jornada.',
-        notificationColor: colors.primary,
-      },
-    });
+    // Non-interactive: never show permission prompts during startup. The
+    // shared starter also checks hasStartedLocationUpdatesAsync first.
+    const result = await startWorkdayLocationUpdates({ interactive: false });
+    if (!result.success) {
+      console.warn('[SessionRestore] Could not restore tracking:', result.reason);
+    }
   } catch {
     // expo-task-manager unavailable in Expo Go — silently ignore
   }
@@ -101,7 +86,9 @@ export function useSessionRestore() {
         }
 
         console.log('[SessionRestore] Calling /api/courier/me to validate session');
-        const res = await apiClient.get<ApiResponse<CourierMeResponse>>('/api/courier/me');
+        const res = await apiClient.get<ApiResponse<CourierMeResponse>>('/api/courier/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const profile = unwrap(res);
 
         const user: CourierUser = {
@@ -113,19 +100,39 @@ export function useSessionRestore() {
           operationalStatus: profile.operational_status,
         };
 
-        setSession(user, token, refreshToken ?? undefined);
+        // The request may have refreshed the tokens. Re-read them so we don't
+        // overwrite the fresh access token with the expired one.
+        const currentState = useAuthStore.getState();
+        const currentAccessToken = currentState.accessToken ?? token;
+        const currentRefreshToken = currentState.refreshToken ?? refreshToken;
+
+        await setSession(user, currentAccessToken, currentRefreshToken ?? undefined);
         console.log('[SessionRestore] Session restored successfully');
 
-        // If the courier is IN_SERVICE (actively delivering), ensure the background
-        // location task is running — it may have been killed by the OS.
-        // If AVAILABLE, useServiceTracking will start it when a service is accepted.
-        if (profile.operational_status === 'IN_SERVICE') {
+        // If the courier has an active workday (AVAILABLE or IN_SERVICE),
+        // ensure the background location task is running — it may have been
+        // killed by the OS while the app was closed.
+        if (
+          profile.operational_status === 'AVAILABLE' ||
+          profile.operational_status === 'IN_SERVICE'
+        ) {
           await restoreWorkdayTracking();
+        } else {
+          // Authoritative UNAVAILABLE at launch: the shift already ended, so
+          // make sure a leftover task from a previous process does not keep
+          // reporting location.
+          await stopWorkdayLocationUpdates();
         }
-      } catch (err) {
-        // Token invalid, expired, or network error — force re-login
+      } catch (err: any) {
         console.log('[SessionRestore] Error during restore:', err);
-        clearSession();
+        // Only a rejected/expired token invalidates the session. Network or
+        // server errors must keep the stored session for the next launch.
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          await clearSession();
+        } else {
+          console.warn('[SessionRestore] Keeping stored session after transient error');
+        }
       } finally {
         // Always unblock, regardless of outcome
         if (!done) {

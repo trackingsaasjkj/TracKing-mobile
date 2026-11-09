@@ -53,7 +53,7 @@ describe('useUploadEvidence — setImageUri', () => {
 
   it('actualiza imageUri', async () => {
     const { result } = await renderHook(() => useUploadEvidence());
-    act(() => { result.current.setImageUri('file://photo.jpg'); });
+    await act(async () => { result.current.setImageUri('file://photo.jpg'); });
     expect(result.current.imageUri).toBe('file://photo.jpg');
   });
 });
@@ -74,7 +74,7 @@ describe('useUploadEvidence — upload', () => {
   it('sube correctamente y marca uploaded=true', async () => {
     (evidenceApi.upload as jest.Mock).mockResolvedValue({ id: 'ev-1' });
     const { result } = await renderHook(() => useUploadEvidence());
-    act(() => { result.current.setImageUri('file://photo.jpg'); });
+    await act(async () => { result.current.setImageUri('file://photo.jpg'); });
     let ok = false;
     await act(async () => { ok = await result.current.upload('svc-1'); });
     expect(ok).toBe(true);
@@ -85,7 +85,7 @@ describe('useUploadEvidence — upload', () => {
   it('retorna false y establece error cuando la API falla', async () => {
     (evidenceApi.upload as jest.Mock).mockRejectedValue({ userMessage: 'Error al subir' });
     const { result } = await renderHook(() => useUploadEvidence());
-    act(() => { result.current.setImageUri('file://photo.jpg'); });
+    await act(async () => { result.current.setImageUri('file://photo.jpg'); });
     let ok = true;
     await act(async () => { ok = await result.current.upload('svc-1'); });
     expect(ok).toBe(false);
@@ -102,9 +102,9 @@ describe('useUploadEvidence — reset', () => {
   it('limpia todo el estado tras una subida exitosa', async () => {
     (evidenceApi.upload as jest.Mock).mockResolvedValue({});
     const { result } = await renderHook(() => useUploadEvidence());
-    act(() => { result.current.setImageUri('file://photo.jpg'); });
+    await act(async () => { result.current.setImageUri('file://photo.jpg'); });
     await act(async () => { await result.current.upload('svc-1'); });
-    act(() => { result.current.reset(); });
+    await act(async () => { result.current.reset(); });
     expect(result.current.imageUri).toBeNull();
     expect(result.current.uploaded).toBe(false);
     expect(result.current.error).toBeNull();
@@ -112,7 +112,7 @@ describe('useUploadEvidence — reset', () => {
 
   it('reset desde estado inicial no lanza error', async () => {
     const { result } = await renderHook(() => useUploadEvidence());
-    expect(() => act(() => { result.current.reset(); })).not.toThrow();
+    await act(async () => { result.current.reset(); });
   });
 });
 
@@ -145,8 +145,8 @@ describe('P-2: reset siempre limpia imageUri (PBT)', () => {
         fc.webUrl(),
         async (uri) => {
           const { result } = await renderHook(() => useUploadEvidence());
-          act(() => { result.current.setImageUri(uri); });
-          act(() => { result.current.reset(); });
+          await act(async () => { result.current.setImageUri(uri); });
+          await act(async () => { result.current.reset(); });
           expect(result.current.imageUri).toBeNull();
         },
       ),

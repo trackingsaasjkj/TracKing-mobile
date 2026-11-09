@@ -6,7 +6,6 @@ import { HomeScreen } from '@/features/dashboard/screens/HomeScreen';
 import { ServicesNavigator } from '@/features/services/navigation/ServicesNavigator';
 import { WorkdayScreen } from '@/features/workday/screens/WorkdayScreen';
 import { EarningsScreen } from '@/features/earnings/screens/EarningsScreen';
-import { withSwipeNavigation } from './withSwipeNavigation';
 
 export type MainTabParamList = {
   Home: undefined;
@@ -26,12 +25,6 @@ const TAB_ICONS: Record<
   Earnings: { active: 'bar-chart',      inactive: 'bar-chart-outline' },
   Config:   { active: 'settings',       inactive: 'settings-outline' },
 };
-
-// Envolver componentes con swipe navigation
-const HomeScreenWithSwipe = withSwipeNavigation(HomeScreen);
-const ServicesNavigatorWithSwipe = withSwipeNavigation(ServicesNavigator);
-const EarningsScreenWithSwipe = withSwipeNavigation(EarningsScreen);
-const WorkdayScreenWithSwipe = withSwipeNavigation(WorkdayScreen);
 
 export function TabNavigator() {
   const { colors } = useTheme();
@@ -58,10 +51,10 @@ export function TabNavigator() {
         },
       })}
     >
-      <Tab.Screen name="Home"     component={HomeScreenWithSwipe}        options={{ title: 'Inicio' }} />
+      <Tab.Screen name="Home"     component={HomeScreen}        options={{ title: 'Inicio' }} />
       <Tab.Screen
         name="Orders"
-        component={ServicesNavigatorWithSwipe}
+        component={ServicesNavigator}
         options={{ title: 'Servicios', headerShown: false }}
         listeners={({ navigation }) => ({
           // Every time the Orders tab is pressed (whether switching to it or
@@ -72,8 +65,8 @@ export function TabNavigator() {
           },
         })}
       />
-      <Tab.Screen name="Earnings" component={EarningsScreenWithSwipe}    options={{ title: 'Reportes' }} />
-      <Tab.Screen name="Config"   component={WorkdayScreenWithSwipe}     options={{ title: 'Config' }} />
+      <Tab.Screen name="Earnings" component={EarningsScreen}    options={{ title: 'Reportes' }} />
+      <Tab.Screen name="Config"   component={WorkdayScreen}     options={{ title: 'Config' }} />
     </Tab.Navigator>
   );
 }

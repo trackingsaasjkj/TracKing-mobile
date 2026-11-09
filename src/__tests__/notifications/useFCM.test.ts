@@ -26,6 +26,7 @@ jest.mock('@/core/notifications/fcm.service', () => ({
   onForegroundMessage: jest.fn(() => jest.fn()),
   onBackgroundNotificationOpened: jest.fn(),
   getInitialNotification: jest.fn(),
+  isFcmSupported: jest.fn(() => true),
 }));
 
 const mockApiPost = apiClient.post as jest.MockedFunction<typeof apiClient.post>;
@@ -34,6 +35,7 @@ const mockGetToken = fcmService.getFCMToken as jest.MockedFunction<typeof fcmSer
 const mockOnTokenRefresh = fcmService.onTokenRefresh as jest.MockedFunction<typeof fcmService.onTokenRefresh>;
 const mockOnForeground = fcmService.onForegroundMessage as jest.MockedFunction<typeof fcmService.onForegroundMessage>;
 const mockGetInitialNotification = fcmService.getInitialNotification as jest.MockedFunction<typeof fcmService.getInitialNotification>;
+const mockIsFcmSupported = fcmService.isFcmSupported as jest.MockedFunction<typeof fcmService.isFcmSupported>;
 
 function setAuthenticated(value: boolean) {
   useAuthStore.setState({ isAuthenticated: value, user: null, accessToken: null });
@@ -53,6 +55,27 @@ describe('useFCM — no autenticado', () => {
     await act(async () => {});
     expect(mockRequestPermission).not.toHaveBeenCalled();
     expect(mockGetToken).not.toHaveBeenCalled();
+  });
+});
+
+describe('useFCM — FCM no soportado', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setAuthenticated(true);
+    mockIsFcmSupported.mockReturnValue(false);
+  });
+
+  afterEach(() => {
+    mockIsFcmSupported.mockReturnValue(true);
+  });
+
+  it('NO inicializa FCM cuando el módulo nativo no está disponible', async () => {
+    await renderHook(() => useFCM());
+    await act(async () => {});
+
+    expect(mockRequestPermission).not.toHaveBeenCalled();
+    expect(mockGetToken).not.toHaveBeenCalled();
+    expect(mockOnForeground).not.toHaveBeenCalled();
   });
 });
 

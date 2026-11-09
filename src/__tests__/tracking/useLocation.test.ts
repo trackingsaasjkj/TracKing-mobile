@@ -19,29 +19,31 @@ jest.mock('@/features/tracking/api/locationApi', () => ({
 }));
 
 jest.mock('@/features/tracking/store/trackingStore', () => {
-  let state = {
+  const state = {
     latitude: null as number | null,
     longitude: null as number | null,
     permissionDenied: false,
   };
+  const setCoords = jest.fn((lat: number, lng: number) => {
+    state.latitude = lat;
+    state.longitude = lng;
+  });
+  const setPermissionDenied = jest.fn((v: boolean) => {
+    state.permissionDenied = v;
+  });
+  const clearCoords = jest.fn(() => {
+    state.latitude = null;
+    state.longitude = null;
+  });
   return {
-    useTrackingStore: (selector: (s: typeof state) => any) => {
-      const store = {
-        ...state,
-        setCoords: jest.fn((lat: number, lng: number) => {
-          state.latitude = lat;
-          state.longitude = lng;
-        }),
-        setPermissionDenied: jest.fn((v: boolean) => { state.permissionDenied = v; }),
-        clearCoords: jest.fn(() => {
-          state.latitude = null;
-          state.longitude = null;
-        }),
-      };
-      return selector(store);
-    },
+    __spies: { setCoords, setPermissionDenied, clearCoords },
+    useTrackingStore: (selector: (s: any) => any) =>
+      selector({ ...state, setCoords, setPermissionDenied, clearCoords }),
   };
 });
+
+const trackingSpies = () =>
+  (jest.requireMock('@/features/tracking/store/trackingStore') as any).__spies;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -127,6 +129,25 @@ describe('useLocation — foreground tracking', () => {
     expect(locationApi.send).not.toHaveBeenCalled();
   });
 
+  it('escribe las coordenadas en el store sin reportar al backend (watch-only)', async () => {
+    await renderHook(() => useLocation({ active: true, reportToBackend: false }));
+    await act(async () => { await Promise.resolve(); });
+    expect(trackingSpies().setCoords).toHaveBeenCalledWith(4.71, -74.07);
+    expect(locationApi.send).not.toHaveBeenCalled();
+  });
+
+  it('mantiene el GPS local cada 15s en modo watch-only sin enviar', async () => {
+    await renderHook(() => useLocation({ active: true, reportToBackend: false }));
+    await act(async () => { await Promise.resolve(); });
+    await act(async () => {
+      jest.advanceTimersByTime(30_000);
+      await Promise.resolve();
+    });
+    expect(ExpoLocation.getCurrentPositionAsync).toHaveBeenCalledTimes(3);
+    expect(trackingSpies().setCoords).toHaveBeenCalledTimes(3);
+    expect(locationApi.send).not.toHaveBeenCalled();
+  });
+
   it('deja de enviar al desactivarse', async () => {
     const { rerender } = await renderHook<void, { active: boolean }>(
       ({ active }) => useLocation({ active }),
@@ -152,7 +173,7 @@ describe('useLocation — manejo de errores', () => {
     await act(async () => { await Promise.resolve(); });
   });
 
-  it('respuesta 400 del backend detiene el tracking en primer plano', async () => {
+  it('un 400 deja de reportar pero mantiene el GPS local actualizado', async () => {
     (locationApi.send as jest.Mock).mockRejectedValueOnce(makeAxiosError(400));
     await renderHook(() => useLocation({ active: true }));
     await act(async () => { await Promise.resolve(); });
@@ -161,6 +182,8 @@ describe('useLocation — manejo de errores', () => {
       await Promise.resolve();
     });
     expect(locationApi.send).toHaveBeenCalledTimes(1);
+    expect(ExpoLocation.getCurrentPositionAsync).toHaveBeenCalledTimes(3);
+    expect(trackingSpies().setCoords).toHaveBeenCalledTimes(3);
   });
 
   it('errores distintos de 400 no detienen el tracking', async () => {

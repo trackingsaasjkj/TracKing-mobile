@@ -6,16 +6,19 @@ import { locationApi } from '../api/locationApi';
 export const WORKDAY_BACKGROUND_TASK = 'workday-background-location';
 
 /**
- * Background location task for active service delivery.
+ * Background location task for the whole workday.
  *
  * Lifecycle:
- *   - Starts when the courier accepts a service (first service → ASSIGNED/ACCEPTED/IN_TRANSIT)
- *   - Stops when all services are completed/cancelled (no more active services)
+ *   - Starts when the courier starts the shift (AVAILABLE)
+ *   - Keeps running during AVAILABLE and IN_SERVICE, including screen-off,
+ *     lock and app background/close (Android foreground service)
+ *   - Stops only on explicit shift end (UNAVAILABLE) or logout
  *
- * This ensures location is sent to the backend only while the courier is actively
- * delivering a service, not during idle time between services.
+ * The backend rejects locations while the courier is not IN_SERVICE (400).
+ * That is expected: the task keeps the foreground service alive so it can
+ * report immediately once the courier starts a service.
  *
- * Managed by useServiceTracking hook which monitors service status changes.
+ * Managed by useWorkdayTracking (start/stop) and useServiceTracking (watchdog).
  *
  * Uses sendFromBackground() which reads the JWT from Zustand first (in-memory),
  * then falls back to SecureStore (persisted to disk). This ensures the token
@@ -70,16 +73,15 @@ TaskManager.defineTask(
         timestamp,
       });
 
-      // 401 = session expired and refresh failed — stop the task
-      // (sendFromBackground already attempted to refresh, so if we still get 401, it's unrecoverable)
+      // 401 = session expired and refresh failed.
+      // Do NOT stop the task here: the refresh may have failed because of a
+      // transient network issue while the device was in Doze/screen-off.
+      // The next location update will retry the refresh automatically, so
+      // tracking resumes as soon as connectivity comes back.
       if (err?.status === 401) {
-        console.warn('[WorkdayTracking] Session expired (401) and refresh failed, stopping task');
-        const isRunning = await ExpoLocation.hasStartedLocationUpdatesAsync(
-          WORKDAY_BACKGROUND_TASK,
-        ).catch(() => false);
-        if (isRunning) {
-          await ExpoLocation.stopLocationUpdatesAsync(WORKDAY_BACKGROUND_TASK).catch(() => {});
-        }
+        console.warn(
+          '[WorkdayTracking] Session expired (401) and refresh failed; will retry on next update',
+        );
       }
       // All other errors (network, timeout, 400) are logged but not fatal
       // The task will continue running and retry on the next location update

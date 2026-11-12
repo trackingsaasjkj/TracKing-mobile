@@ -22,9 +22,8 @@ const IS_WEB = Platform.OS === 'web';
 
 const NAMESPACE = '/services';
 
-/** Backoff delays in ms: 1s, 2s, 4s, 8s, 16s, 30s */
+/** Backoff delays in ms: 1s, 2s, 4s, 8s, 16s, 30s (luego se queda en 30s) */
 const RECONNECT_DELAYS = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000];
-const MAX_RECONNECT_ATTEMPTS = RECONNECT_DELAYS.length;
 
 // Socket.io / Engine.IO packet types
 const EIO_OPEN = '0';
@@ -66,6 +65,19 @@ class ServiceWebSocketClient {
     this._cleanup();
     this.reconnectAttempts = 0;
     this._setStatus('disconnected');
+  }
+
+  /**
+   * Fuerza una reconexión inmediata (p. ej. al volver del background).
+   * No hace nada si el socket ya está abierto o no hay token.
+   */
+  reconnectNow(): void {
+    if (IS_WEB || !this.currentToken) return;
+    if (this.ws?.readyState === WebSocket.OPEN) return;
+
+    this.isManualDisconnect = false;
+    this.reconnectAttempts = 0;
+    this._openSocket(this.currentToken);
   }
 
   /** Register an event listener. Returns unsubscribe fn. */
@@ -194,12 +206,13 @@ class ServiceWebSocketClient {
   }
 
   private _scheduleReconnect(): void {
-    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+    if (this.isManualDisconnect || !this.currentToken) {
       this._setStatus('disconnected');
       return;
     }
+
     this._setStatus('reconnecting');
-    const delay = RECONNECT_DELAYS[this.reconnectAttempts];
+    const delay = RECONNECT_DELAYS[Math.min(this.reconnectAttempts, RECONNECT_DELAYS.length - 1)];
     this.reconnectAttempts += 1;
     this._clearReconnectTimer();
     this.reconnectTimer = setTimeout(() => {

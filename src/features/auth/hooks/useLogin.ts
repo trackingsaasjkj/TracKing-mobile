@@ -35,7 +35,6 @@ export function useLogin(): UseLoginResult {
     console.log('═══════════════════════════════════════════════════════════');
     console.log('[Login] INICIANDO SESIÓN');
     console.log('[Login] Email:', email);
-    console.log('[Login] Password length:', password.length);
     console.log('═══════════════════════════════════════════════════════════');
     
     setError(null);
@@ -47,7 +46,6 @@ export function useLogin(): UseLoginResult {
       const userData = await authApi.login({ email, password });
       
       console.log('[Login] ✅ RESPUESTA RECIBIDA del backend:');
-      console.log('[Login] userData:', JSON.stringify(userData, null, 2));
       console.log('[Login] Response received:', {
         id: userData.id,
         name: userData.name,
@@ -56,9 +54,6 @@ export function useLogin(): UseLoginResult {
         company_id: userData.company_id,
         hasAccessToken: !!userData.accessToken,
         hasRefreshToken: !!userData.refreshToken,
-        accessTokenLength: userData.accessToken?.length ?? 0,
-        refreshTokenLength: userData.refreshToken?.length ?? 0,
-        accessTokenStart: userData.accessToken?.substring(0, 30) ?? 'null',
       });
 
       // Only allow COURIER role to use the mobile app
@@ -79,8 +74,6 @@ export function useLogin(): UseLoginResult {
 
       // Save both accessToken and refreshToken
       console.log('[Login] Guardando tokens en el store...');
-      console.log('[Login] accessToken:', userData.accessToken?.substring(0, 20) + '...');
-      console.log('[Login] refreshToken:', userData.refreshToken?.substring(0, 20) + '...');
       await setSession(user, userData.accessToken, userData.refreshToken);
       console.log('[Login] ✅ Tokens guardados correctamente');
 
@@ -102,9 +95,8 @@ export function useLogin(): UseLoginResult {
     } catch (err: unknown) {
       console.error('═══════════════════════════════════════════════════════════');
       console.error('[Login] ❌ ERROR EN LOGIN');
-      console.error('[Login] Error completo:', err);
-      console.error('[Login] Error JSON:', JSON.stringify(err, null, 2));
-      
+      console.error('[Login] Message:', (err as Error)?.message);
+
       const apiErr = err as { 
         response?: { status?: number; data?: any }; 
         userMessage?: string;

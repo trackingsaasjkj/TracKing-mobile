@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
 import { wsClient } from '@/core/api/wsClient';
 import { useAuthStore } from '@/features/auth/store/authStore';
@@ -31,6 +32,22 @@ export function useServiceUpdates(): void {
     if (!accessToken) return;
 
     wsClient.connect(accessToken);
+
+    // Al (re)conectar, refetch para recuperar eventos perdidos mientras
+    // el socket estuvo caído o la app en background.
+    const resync = () => {
+      queryClient.invalidateQueries({ queryKey: ['courier-services'] });
+      queryClient.invalidateQueries({ queryKey: ['courier-active-route'] });
+      queryClient.invalidateQueries({ queryKey: ['courier-earnings'] });
+    };
+    const unsubStatus = wsClient.onStatusChange((status) => {
+      if (status === 'connected') resync();
+    });
+
+    // Al volver del background, reconectar de inmediato si el socket murió.
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') wsClient.reconnectNow();
+    });
 
     // ── Service events ───────────────────────────────────────────────────────
     const unsubUpdate = wsClient.on('service:updated', (raw: unknown) => {
@@ -143,6 +160,8 @@ export function useServiceUpdates(): void {
       unsubRouteAssigned();
       unsubRouteUpdated();
       unsubStopCompleted();
+      unsubStatus();
+      appStateSub.remove();
       wsClient.disconnect();
     };
   }, [accessToken, updateService, addService, setActiveRoute, updateStop, clearActiveRoute, queryClient]);

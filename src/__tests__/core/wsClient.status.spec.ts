@@ -137,24 +137,34 @@ describe('wsClient — status tracking', () => {
     expect(client.status).toBe('disconnected');
   });
 
-  it('status becomes disconnected after max reconnect attempts', async () => {
+  it('sigue reintentando indefinidamente (tope 30s, nunca se rinde)', async () => {
     const client = getClient();
     const handler = jest.fn();
     client.onStatusChange(handler);
 
     client.connect('token');
 
-    const delays = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000];
+    const delays = [1_000, 2_000, 4_000, 8_000, 16_000, 30_000, 30_000, 30_000];
     for (const delay of delays) {
       mockWsInstance.simulateClose(1006);
       jest.advanceTimersByTime(delay);
     }
 
-    // After exhausting all retries, one more close should set disconnected
-    mockWsInstance.simulateClose(1006);
-
     const calls = handler.mock.calls.map(([s]) => s);
-    expect(calls[calls.length - 1]).toBe('disconnected');
+    expect(calls).not.toContain('disconnected');
+    expect(client.status).toBe('reconnecting');
+    // Hay una nueva instancia esperando conectar
+    expect(mockWsInstance).not.toBeNull();
+  });
+
+  it('reconnectNow reabre el socket si no está conectado', async () => {
+    const client = getClient();
+    client.connect('token');
+    const first = mockWsInstance;
+
+    client.reconnectNow();
+
+    expect(mockWsInstance).not.toBe(first);
   });
 
   // ── onStatusChange unsubscribe ─────────────────────────────────────────────

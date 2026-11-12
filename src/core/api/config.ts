@@ -3,12 +3,12 @@
  *
  * Para cambiar de entorno, modifica solo este archivo.
  *
- * Desarrollo local:  http://192.168.1.7:3000   (reemplaza con tu IPv4, ver con `ipconfig`)
+ * Desarrollo local:  http://localhost:3000      (máquina local)
  * Producción:        https://tracking-backend-g4mq.onrender.com
  */
 
 // 🔧 CAMBIAR AQUÍ para alternar entre local y producción
-const RAW_HTTP_BASE = 'https://44lhvcz2-3000.use2.devtunnels.ms/';
+const RAW_HTTP_BASE = 'http://10.230.235.69:3000';
 
 /** Removes trailing slashes so base + path never produces a double slash. */
 export function normalizeBaseUrl(url: string): string {
